@@ -1,0 +1,237 @@
+/* This creates a skinny side bar fixed to the left of the page */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 5rem;
+  padding: 2rem 0.75rem;
+  background-color: #cbd3dd;
+  z-index: 1050;
+  transition: width 0.1s ease-in-out;
+}
+
+/* when the user hovers on the sidebar, expand it */
+.sidebar:hover {
+  width: 13rem;
+}
+
+/* make sure the contents of the navlink don't wrap when navbar collapses */
+.sidebar .nav-link {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* fix the width of the icons */
+.sidebar .nav-link i {
+  width: 2rem;
+  font-size: 20px;
+}
+
+/* hide the navlink labels by default */
+.sidebar .nav-link span {
+  visibility: hidden;
+  opacity: 1;
+  transition: opacity 0.1s ease-in-out;
+  font-size: 16px;
+}
+
+/* when the sidebar is hovered, reveal the labels */
+.sidebar:hover .nav-link span {
+  visibility: visible;
+  opacity: 1;
+  color: white;
+  padding: 0.31rem 0.31rem;
+}
+
+/* container for the sidebar header. make sure the contents don't wrap when
+ * the sidebar is collapsed.
+ */
+.sidebar-header {
+  display: flex;
+  justify-content: left;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* position the header relative to the logo and hide by default */
+.sidebar-header h2 {
+  opacity: 0;
+  margin-left: 1rem;
+  margin-bottom: 0;
+  transition: opacity 0.1s ease-in-out;
+}
+
+/* reveal the header when the sidebar is toggled */
+.sidebar:hover .sidebar-header h2 {
+  opacity: 1;
+}
+
+/* position the content relative to the collapsed sidebar */
+.content {
+  margin-left: 7rem;
+  margin-right: 2rem;
+  padding: 2rem 1rem;
+}
+
+@font-face {
+    font-family: 'cairoblack';
+    src: url('cairo-black-webfont.woff2') format('woff2'),
+         url('cairo-black-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+
+
+
+@font-face {
+    font-family: 'cairobold';
+    src: url('cairo-bold-webfont.woff2') format('woff2'),
+         url('cairo-bold-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+
+
+
+@font-face {
+    font-family: 'cairoextralight';
+    src: url('cairo-extralight-webfont.woff2') format('woff2'),
+         url('cairo-extralight-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+
+
+
+@font-face {
+    font-family: 'cairolight';
+    src: url('cairo-light-webfont.woff2') format('woff2'),
+         url('cairo-light-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+
+
+
+@font-face {
+    font-family: 'cairoregular';
+    src: url('cairo-regular-webfont.woff2') format('woff2'),
+         url('cairo-regular-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+@font-face {
+    font-family: 'cairosemibold';
+    src: url('cairo-semibold-webfont.woff2') format('woff2'),
+         url('cairo-semibold-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+body {
+  background-color: #26232C;
+  font-family: cairobold;
+}
+
+h1 {
+  color: #FEFEFE;
+  text-align: left;
+  font-family: cairobold;
+  font-weight: 600;
+}
+
+h2 {
+  color: #FEFEFE;
+  text-align: center;
+  font-family: cairosemibold;
+}
+
+h4	{
+  color: #FEFEFE;
+  font-size: 15px;
+  font-family: cairobold;
+}
+h5	{
+  color: #FEFEFE;
+  font-size: 23px;
+  font-family: cairobold;
+}
+
+.custom-tab-1{
+  background-color: #4e5b8a !important;
+  border-radius: 20px;
+  color: white !important;
+}
+.custom-tab-2{
+  background-color: #4e5b8a !important;
+  border-radius: 20px;
+  color: white !important;
+}
+.custom-tab-3{
+  background-color: #4e5b8a !important;
+  border-radius: 20px;
+  color: white !important;
+}
+.custom-tab-4{
+  background-color: #4e5b8a !important;
+  border-radius: 20px;
+  color: white !important;
+}
+.custom-tab-5{
+  background-color: #4e5b8a !important;
+  border-radius: 20px;
+  color: white !important;
+}
+
+
+#my-range-slider label:nth-child(1){
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(2) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(3) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(4) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(5) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(6) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(7) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(8) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(9) {
+  flex: 0.3;
+}
+#my-range-slider label:nth-child(10) {
+  flex: 0.3;
+}
+#my-range-slider > div {
+  display: flex;
+}
+
+
+
+
