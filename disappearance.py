@@ -1,0 +1,349 @@
+import dash
+import dash_bootstrap_components as dbc
+import dash_html_components as html
+import dash_core_components as dcc
+import plotly.express as px
+from dash.dependencies import Input, Output
+import pandas as pd
+from apps import home
+import numpy as np
+import datetime
+from datetime import datetime as dt
+import pathlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+from textwrap import dedent as d
+import copy
+from collections import Counter
+import networkx as nx #ADDED
+import json #ADDED
+from collections import Counter #ADDED 
+from colour import Color #ADDED
+import plotly.graph_objects as go
+import holoviews as hv
+from holoviews import opts, dim
+from bokeh.models import HoverTool
+from bokeh.themes import Theme
+import warnings
+warnings.filterwarnings("ignore")
+
+########## BEGIN: LEFT HERE AS AN EXAMPLE --> DELETE LATER ##########
+df = pd.read_csv('https://raw.githubusercontent.com/Coding-with-Adam/Dash-by-Plotly/master/Bootstrap/Side-Bar/iranian_students.csv')
+############################## END ##############################
+
+########## CONFIGURE APP ##########
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX, 'https://use.fontawesome.com/releases/v6.1.1/css/all.css'], meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1'}])
+server = app.server
+app.config.suppress_callback_exceptions = True
+
+########## DEFINE CONTENT STYLE ##########
+CONTENT_STYLE = {
+    "margin-left": "8rem",
+    "margin-right": "2rem",
+    "padding": "2rem 1rem",
+}
+
+########## DEFINE SIDEABAR AND CONTENT; FINISH THE CONFIGURATION OF THE APP ##########
+sidebar = html.Div(
+    [
+        html.Div(
+            [
+                html.H2("Explore", style={"color": "white"}),
+            ],
+            className="sidebar-header",
+        ),
+        html.Hr(),
+        dbc.Nav(children=[
+                dbc.NavLink(
+                    [
+                        html.I(className="fas fa-home me-2"), 
+                        html.Span("Home", style={"color": "#FEFEFE"})
+                    ],
+                    href="/",
+                    active="exact",
+                ),
+                dbc.NavLink(
+                    [
+                        html.I(className="fab fa-connectdevelop"),
+                        html.Span("Email Exchange", style={"color": "#FEFEFE"}),
+                    ],
+                    href=  "/page-1", 
+                    active="exact",
+                ),
+                dbc.NavLink(
+                    [
+                        html.I(className="fas fa-envelope-open-text me-2"),
+                        html.Span("Sth else", style={"color": "#FEFEFE"}),
+                    ],
+                    href="/page-2", 
+                    active="exact",
+                ),
+            ],
+            vertical=True,
+            pills=True,
+        ),
+    ],
+    className="sidebar", 
+)
+
+# define content
+content = html.Div(id="page-content", children=[], style=CONTENT_STYLE)
+
+# complete app layout
+app.layout = html.Div([
+    dcc.Location(id="url"),
+    sidebar,
+    content
+])
+
+
+########## IMPORT DATA AND PREPROCESS ##########
+email_df = pd.read_csv('email_headers.csv', encoding='cp1252')
+employee_recs = pd.read_excel("EmployeeRecords.xlsx")
+
+cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
+
+# get all unique email subject that have a response
+all_re = []
+for i in range(len(email_df)):
+    if 'RE' in email_df['Subject'][i]:
+        all_re.append(email_df['Subject'][i][4:])
+all_re = np.unique(all_re)
+
+
+def get_full_conv(subject: str):
+    """
+    subject: the subject of the email
+    returns the full conversation
+    """
+    
+    root = email_df[email_df['Subject'].isin([subject])]
+    replies = email_df[email_df['Subject'].isin(['RE: ' + subject])]
+    result = pd.concat([root, replies]).sort_values('Date')
+    
+    return result
+
+
+# get the days from the date, and department for each employee
+email_df['Day'] = None
+email_df['DepTo'] = None
+email_df['DepFrom'] = None
+emp_dict = dict(zip(employee_recs.EmailAddress, employee_recs.CurrentEmploymentType))
+for i in range(len(email_df)):
+    email_df['Day'][i] = str(dt.strptime(email_df['Date'][i], "%m/%d/%Y %H:%M").day)
+    email_df['DepFrom'][i]=emp_dict.get(email_df['From'][i])
+    to_list = []
+    for to in email_df['To'][i].split(', '):
+        to_list.append(emp_dict.get(to))
+    email_df['DepTo'][i]=to_list
+
+def edge_node(att, toatt, fromatt, day_search=None):
+    #compute the edges
+    edge_temp = []
+    if day_search==None:
+        iter_days = email_df['Day'].unique()
+    else:
+        iter_days = [str(day_search)]
+        
+    for day in iter_days:
+        email_df_day = email_df[email_df['Day']==day]
+        if att=='EmailAddress':
+            adj_matrix = pd.DataFrame(employee_recs[att]).set_index(att)
+        else:
+            adj_matrix = pd.DataFrame(['Administration', 'Information Technology', 'Executive', 'Facilities', 'Engineering', 'Security'], columns = [att]).set_index(att)
+
+        for i in adj_matrix.index: #set up the matrix: rows correspond to the "From" person, columns to the "To" person
+            adj_matrix[f'{i}']= 0 
+
+
+        for i in adj_matrix.index: # fill in the matrix
+            from_df = email_df_day[email_df_day[fromatt]==i]
+            to_total = []
+
+            for j in from_df[toatt]: 
+                try:
+                    to_total += j.split(', ')
+                except:
+                    to_total += j
+            to_total = Counter(to_total)
+
+            for c in adj_matrix.columns:
+                if (c != i) and (to_total.get(c) != None):
+                    adj_matrix[c][i] = to_total.get(c) # the syntax here is reverse: first is the "To" person, then it is the "From" person
+        for k in adj_matrix.index:
+            for j in adj_matrix.columns:
+                if k!=j and adj_matrix[j][k]!=0:
+                    edge_temp.append([adj_matrix[j][k],k, j, day])
+    
+    edge_temp = pd.DataFrame(edge_temp, columns = ['TransactionAmt','Source','Target', 'Date'])
+    
+    #compute the nodes
+    node_temp = []
+    if att=='EmailAddress':
+        for i in adj_matrix.columns:
+            node_temp.append([i, i.split('@')[0].split('.')[0] + ' ' + i.split('@')[0].split('.')[1]])
+        node_temp = pd.DataFrame(node_temp, columns = ['Account','CustomerName'])
+    else:
+        for i in adj_matrix.columns:
+            node_temp.append([i, i])
+        node_temp = pd.DataFrame(node_temp, columns = ['Account0', 'Account'])
+    return adj_matrix, edge_temp, node_temp
+
+_, edge2, node2 = edge_node('EmailAddress', 'To', 'From')
+
+name_email_dict = dict(zip(node2['Account'].to_list(), node2['CustomerName'].to_list()))
+emp_dep_dict = dict(zip(employee_recs['EmailAddress'].to_list(), employee_recs['CurrentEmploymentType'].to_list()))
+df_chord_nodes = employee_recs[['EmailAddress']]
+df_chord_nodes['Department'] = None
+df_chord_nodes['Name'] = None
+for i in range(len(df_chord_nodes)): 
+    df_chord_nodes['Department'][i] = emp_dep_dict.get(df_chord_nodes['EmailAddress'][i])
+    df_chord_nodes['Name'][i] = name_email_dict.get(df_chord_nodes['EmailAddress'][i])   
+
+_, df_chord_edges, _ = edge_node('EmailAddress', 'To', 'From')
+df_chord_edges = df_chord_edges.rename(columns={"TransactionAmt": "value"})
+df_chord_edges['source'] = None
+df_chord_edges['target'] = None
+df_chord_edges['Gsource'] = None
+df_chord_edges['Gtarget'] = None
+for i in range(len(df_chord_edges)):
+    df_chord_edges['source'][i] = int(df_chord_nodes[df_chord_nodes['EmailAddress']==df_chord_edges['Source'][i]].index[0])
+    df_chord_edges['target'][i] = int(df_chord_nodes[df_chord_nodes['EmailAddress']==df_chord_edges['Target'][i]].index[0])
+    df_chord_edges['Gsource'][i] = emp_dep_dict.get(df_chord_edges['Source'][i])
+    df_chord_edges['Gtarget'][i] = emp_dep_dict.get(df_chord_edges['Target'][i])
+
+df_chord_nodes = df_chord_nodes.drop(columns=['EmailAddress'])
+df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
+df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
+
+YEAR = 6
+# def chord_graph(YEAR):
+#     df_chord_edges_filtered = df_chord_edges[df_chord_edges['Date']==str(YEAR)].drop(columns = ['Date']) #using the df outside the function
+#     tooltips = [('Department', '@Department'), ('Name', '@Name')]
+#     hover = HoverTool(tooltips=tooltips)
+#     hv.extension('bokeh')
+#     hv.output(size=200)
+
+#     df_chord_nodes_filtered = hv.Dataset(df_chord_nodes, 'index')
+
+#     chord = hv.Chord((df_chord_edges_filtered, df_chord_nodes_filtered))
+#     chord.opts(opts.Chord(inspection_policy='nodes', cmap=cmap_custom, edge_cmap=cmap_custom,
+#                                  edge_color=dim('Gsource').str(), labels='Name', node_color=dim('Department').str(),
+#                                  symmetric=True, bgcolor = '#26232C', label_text_color='#FEFEFE', tools = [hover]))
+    
+#     renderer = hv.renderer('bokeh')
+#     renderer.theme = Theme('assets/theme_chord.json') #'dark_minimal'
+#     renderer.save(chord, 'assets/graph_chord')
+#     return 'assets/graph_chord.html'
+def chord_graph(YEAR):
+    return f'assets/graph_chord_{YEAR}.html'
+
+def bar_deps(YEAR):
+    adj_matrix, _, _ = edge_node('CurrentEmploymentType', 'DepTo', 'DepFrom', YEAR)
+    adj_matrix = adj_matrix.rename(columns={"Information Technology": "IT"})
+    adj_matrix = adj_matrix.reset_index()
+    adj_matrix['CurrentEmploymentType'][1] = "IT"
+    
+    fig = px.bar(adj_matrix, x="CurrentEmploymentType", y=['Administration', 'Engineering', 'Executive', 'Facilities', 'IT', 'Security'], color_discrete_sequence =cmap_custom,
+                     labels={
+                             "value": "Number of times",
+                             "CurrentEmploymentType": "From department",
+                             "variable": "To department"
+                         })
+
+    fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
+    return fig
+
+########## RENDER PAGE CONTENT --> I.E. CHANGE THE PAGE WHEN THE USER NAVIGATES TO DIFFERENT PAGE VIA THE SIDEBAR ##########
+@app.callback(
+    Output("page-content", "children"),
+    [Input("url", "pathname")]
+)
+def render_page_content(pathname):
+    # show home page as a starting page
+    if pathname == "/": 
+        return home.layout
+
+    elif pathname == "/page-1":
+        return html.Div([
+    html.Div([html.H1("Email Correspondence Network Graph \n")],
+             className="row",
+             style={'textAlign': "center"}),
+    html.Div(
+        className="row",
+        children=[
+            # left side two input components of the network graph
+            html.Div(
+                className="two columns",
+                children=[
+                    dcc.Markdown(d("""
+                            ** **
+                            **Time Range To Visualize** 
+                            
+                            Choose the day you are intererested in (all days are in Jan '14).
+                            """),style = {'font-size': 16, "color": '#FEFEFE'}),
+                    html.Div(
+                        className="twelve columns",
+                        children=[
+                            dcc.RadioItems(id='my-range-slider', options=[6,7,8,9,10,13,14,15,16,17], value = 6, style={'color': '#FEFEFE', 'font-size': 15,  "margin": "auto", "max-width": "800px", 'display': 'flex'}), 
+
+                            html.Br(),
+                            html.Div(id='output-container-range-slider')
+                        ],
+                    ),
+                ],style={'height': '170px', 'text-align': 'left','position':'relative', 'left':6}
+            ),
+            # display the graph component
+            html.Div(
+                children=[
+                    html.Iframe(id="my-graph",
+                        src=chord_graph(YEAR),
+                        style={'text-align': 'left','position':'relative', 'left':150, "height": "640px", "width": "640px", 'border':"0"},
+                    )
+                ]
+            ),
+            html.Div(
+                className="eight columns",
+                children=[dcc.Graph(id="my-graph2",
+                                    figure=bar_deps(YEAR))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
+                ),
+
+            ]
+        )
+    ])
+
+    elif pathname == "/page-2": #THIS IS AN EXAMPLE FOR NOW
+        return [
+                html.H1('High School in Iran',
+                        style={'textAlign':'center'}),
+                dcc.Graph(id='bargraph',
+                         figure=px.bar(df, barmode='group', x='Years',
+                         y=['Girls High School', 'Boys High School']))
+                ]
+    # if the user tries to reach a different page, return a 404 message
+    return dbc.Jumbotron(
+        [
+            html.H1("404: Not found", className="text-danger"),
+            html.Hr(),
+            html.P(f"The pathname {pathname} was not recognised..."),
+        ]
+    )
+
+########## CALLBACKS ##########
+@app.callback(
+    dash.dependencies.Output('my-graph', 'src'),
+    dash.dependencies.Input('my-range-slider', 'value'))
+def update_output(value):
+    # to update the global variable of YEAR
+    YEAR = value
+    return chord_graph(value)
+@app.callback(
+    dash.dependencies.Output('my-graph2', 'figure'),
+    dash.dependencies.Input('my-range-slider', 'value'))
+def update_output(value):
+    # to update the global variable of YEAR
+    YEAR = value
+    return bar_deps(value)
+
+if __name__=='__main__':
+    app.run_server(debug=True, port=3000)
