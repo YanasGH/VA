@@ -24,6 +24,7 @@ import holoviews as hv
 from holoviews import opts, dim
 from bokeh.models import HoverTool
 from bokeh.themes import Theme
+from nltk.sentiment import SentimentIntensityAnalyzer
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -96,10 +97,14 @@ app.layout = html.Div([
     content
 ])
 
+# define sentiment analuzer
+sia = SentimentIntensityAnalyzer()
 
 ########## IMPORT DATA AND PREPROCESS ##########
-email_df = pd.read_csv('email_headers.csv', encoding='cp1252')
 employee_recs = pd.read_excel("EmployeeRecords.xlsx")
+email_df = pd.read_csv('email_headers.csv', encoding='cp1252')
+sentiment = email_df['Subject'].apply(lambda x: sia.polarity_scores(x))
+email_df[['neg', 'neu', 'pos', 'compound']] = pd.json_normalize(sentiment)
 
 cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
 
@@ -128,10 +133,19 @@ def get_full_conv(subject: str):
 email_df['Day'] = None
 email_df['DepTo'] = None
 email_df['DepFrom'] = None
+email_df['sentiment'] = None
 emp_dict = dict(zip(employee_recs.EmailAddress, employee_recs.CurrentEmploymentType))
 for i in range(len(email_df)):
     email_df['Day'][i] = str(dt.strptime(email_df['Date'][i], "%m/%d/%Y %H:%M").day)
     email_df['DepFrom'][i]=emp_dict.get(email_df['From'][i])
+    
+    if email_df['compound'][i]==0:
+        email_df['sentiment'][i]='neu'
+    elif email_df['compound'][i]>0:
+        email_df['sentiment'][i]='pos'
+    else:
+        email_df['sentiment'][i]='neg'
+        
     to_list = []
     for to in email_df['To'][i].split(', '):
         to_list.append(emp_dict.get(to))
@@ -217,6 +231,7 @@ df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
 df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
 
 YEAR = 6
+analize_by = 'Department'
 # def chord_graph(YEAR):
 #     df_chord_edges_filtered = df_chord_edges[df_chord_edges['Date']==str(YEAR)].drop(columns = ['Date']) #using the df outside the function
 #     tooltips = [('Department', '@Department'), ('Name', '@Name')]
@@ -235,21 +250,45 @@ YEAR = 6
 #     renderer.theme = Theme('assets/theme_chord.json') #'dark_minimal'
 #     renderer.save(chord, 'assets/graph_chord')
 #     return 'assets/graph_chord.html'
-def chord_graph(YEAR):
-    return f'assets/graph_chord_{YEAR}.html'
+def chord_graph(YEAR, analize_by):
+    if analize_by == 'Department':
+        return f'assets/graph_chord_{YEAR}.html'
+    else:
+        return f'assets/graph_chord_sentiment_{YEAR}.html'
 
-def bar_deps(YEAR):
-    adj_matrix, _, _ = edge_node('CurrentEmploymentType', 'DepTo', 'DepFrom', YEAR)
-    adj_matrix = adj_matrix.rename(columns={"Information Technology": "IT"})
-    adj_matrix = adj_matrix.reset_index()
-    adj_matrix['CurrentEmploymentType'][1] = "IT"
-    
-    fig = px.bar(adj_matrix, x="CurrentEmploymentType", y=['Administration', 'Engineering', 'Executive', 'Facilities', 'IT', 'Security'], color_discrete_sequence =cmap_custom,
-                     labels={
-                             "value": "Number of times",
-                             "CurrentEmploymentType": "From department",
-                             "variable": "To department"
-                         })
+def bar_deps(YEAR, analize_by):
+    if analize_by == 'Department':
+        adj_matrix, _, _ = edge_node('CurrentEmploymentType', 'DepTo', 'DepFrom', YEAR)
+        adj_matrix = adj_matrix.rename(columns={"Information Technology": "IT"})
+        adj_matrix = adj_matrix.reset_index()
+        adj_matrix['CurrentEmploymentType'][1] = "IT"
+
+        fig = px.bar(adj_matrix, x="CurrentEmploymentType", y=['Administration', 'Engineering', 'Executive', 'Facilities', 'IT', 'Security'], color_discrete_sequence =cmap_custom,
+                         labels={
+                                 "value": "Number of times",
+                                 "CurrentEmploymentType": "From department",
+                                 "variable": "To department"
+                             })
+    else:
+        dfbs = pd.DataFrame(np.zeros([18, 3]), columns = ['Department', 'Sentiment', 'value'])
+        dfbs['Department'] = 3*['Administration']+3*['IT']+3*['Executive']+3*['Facilities']+3*['Engineering']+3*['Security']
+        dfbs['Sentiment'] = 6*['neg', 'neu', 'pos']
+        
+        dfday = email_df[email_df['Day']==str(YEAR)]
+        sents = []
+        
+        for d in dfbs['Department'].unique():
+            c = Counter(dfday[dfday['DepFrom']==d].explode('DepTo')['sentiment'])
+            for s in ['neg', 'neu', 'pos']:
+                if s in c.keys():
+                    sents.append(c[s])
+                else:
+                    sents.append(0)
+        dfbs['value'] = sents
+        
+        fig = px.bar(dfbs, x="Department", y="value", color="Sentiment",
+             color_discrete_sequence = ['#B51E17', '#BDC4C5', '#379475'])
+        
 
     fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
     return fig
@@ -280,32 +319,47 @@ def render_page_content(pathname):
                             ** **
                             **Time Range To Visualize** 
                             
-                            Choose the day you are intererested in (all days are in Jan '14).
+                            Choose a day (all days are in January 2014).
                             """),style = {'font-size': 16, "color": '#FEFEFE'}),
                     html.Div(
                         className="twelve columns",
                         children=[
-                            dcc.RadioItems(id='my-range-slider', options=[6,7,8,9,10,13,14,15,16,17], value = 6, style={'color': '#FEFEFE', 'font-size': 15,  "margin": "auto", "max-width": "800px", 'display': 'flex'}), 
-
+                            dcc.RadioItems(id='my-range-slider', options=[6,7,8,9,10,13,14,15,16,17], value = 6, style={'color': '#FEFEFE', 'font-size': 13,  "margin": "auto", "max-width": "800px", 'display': 'flex'}),
                             html.Br(),
                             html.Div(id='output-container-range-slider')
                         ],
-                    ),
-                ],style={'height': '170px', 'text-align': 'left','position':'relative', 'left':6}
+                    ), 
+                ],style={'height': '400px', 'text-align': 'left','position':'relative', 'left':6}
             ),
+            
+            # display dropdown component
+            html.Div(
+                className="two columns",
+                children=[dcc.Markdown(d("""
+                            ** **
+                            **Analyze by**
+                            
+                            """), style = {'font-size': 16, "color": '#FEFEFE'}
+                                      ),
+                            html.Div(className="six columns",
+                                     children=[dcc.Dropdown(id="input1", options=['Department', 'Sentiment'],placeholder="Analyze by", value='Department'), html.Div(id='output-container-dropdown')
+                                              ],
+                                    ), 
+                         ],style={'font-size': 13, 'position':'relative', "margin": "auto", "top": "-270px", 'left':0, 'width': "150px"}),
+            
             # display the graph component
             html.Div(
                 children=[
                     html.Iframe(id="my-graph",
-                        src=chord_graph(YEAR),
-                        style={'text-align': 'left','position':'relative', 'left':150, "height": "640px", "width": "640px", 'border':"0"},
+                        src=chord_graph(YEAR, analize_by),
+                        style={'text-align': 'left','position':'relative', 'left':20, "height": "640px", "width": "640px", 'border':"0"},
                     )
                 ]
             ),
             html.Div(
                 className="eight columns",
                 children=[dcc.Graph(id="my-graph2",
-                                    figure=bar_deps(YEAR))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
+                                    figure=bar_deps(YEAR, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
                 ),
 
             ]
@@ -332,18 +386,20 @@ def render_page_content(pathname):
 ########## CALLBACKS ##########
 @app.callback(
     dash.dependencies.Output('my-graph', 'src'),
-    dash.dependencies.Input('my-range-slider', 'value'))
-def update_output(value):
-    # to update the global variable of YEAR
+    [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value')])
+def update_output(value, value2):
+    # to update the global variable of YEAR and analize_by
     YEAR = value
-    return chord_graph(value)
+    analize_by = value2
+    return chord_graph(value, value2)
 @app.callback(
     dash.dependencies.Output('my-graph2', 'figure'),
-    dash.dependencies.Input('my-range-slider', 'value'))
-def update_output(value):
+    [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value')])
+def update_output(value, value2):
     # to update the global variable of YEAR
     YEAR = value
-    return bar_deps(value)
+    analize_by = value2
+    return bar_deps(value, value2)
 
 if __name__=='__main__':
     app.run_server(debug=True, port=3000)
