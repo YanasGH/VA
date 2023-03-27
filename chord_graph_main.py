@@ -10,6 +10,8 @@ import json
 from datetime import datetime as dt
 import numpy as np
 import copy
+import pandas as pd
+
 
 sia = SentimentIntensityAnalyzer()
 
@@ -88,7 +90,6 @@ def edge_node(att, toatt, fromatt):
 
 _, edge2, node2 = edge_node('EmailAddress', 'To', 'From')
 
-dict_nodes_index = dict(zip(employee_recs['EmailAddress'], df_chord_nodes.index))
 name_email_dict = dict(zip(node2['Account'].to_list(), node2['CustomerName'].to_list()))
 emp_dep_dict = dict(zip(employee_recs['EmailAddress'].to_list(), employee_recs['CurrentEmploymentType'].to_list()))
 
@@ -99,14 +100,14 @@ for i in range(len(df_chord_nodes)):
 #     df_chord_nodes['Dep'][i] = dept_encode.get(emp_dep_dict.get(df_chord_nodes['EmailAddress'][i])) # 
     df_chord_nodes['Department'][i] = emp_dep_dict.get(df_chord_nodes['EmailAddress'][i])
     df_chord_nodes['Name'][i] = name_email_dict.get(df_chord_nodes['EmailAddress'][i])   
-
+dict_nodes_index = dict(zip(employee_recs['EmailAddress'], df_chord_nodes.index))
 
 chord_sentiment_pre = pd.DataFrame(product(employee_recs['EmailAddress'], employee_recs['EmailAddress'], ['neg', 'pos', 'neu']), columns = ['source', 'target', 'sentiment'])#.head(4)
 chord_sentiment_pre = chord_sentiment_pre[chord_sentiment_pre['source']!=chord_sentiment_pre['target']].reset_index(drop=True)
 chord_sentiment_pre['value'] = np.zeros(len(chord_sentiment_pre))
 chord_sentiment_pre['dep'] = None
 
-def sentiment_chord_graph(YEAR, chord_sentiment):
+def sentiment_chord_graph(YEAR, chord_sentiment_pre):
     
     chord_sentiment = copy.deepcopy(chord_sentiment_pre)
     for i in range(len(chord_sentiment)):
@@ -157,7 +158,7 @@ def sentiment_chord_graph(YEAR, chord_sentiment):
                                  symmetric=True, bgcolor = '#26232C', label_text_color='#FEFEFE', tools = [hover]))
     return chord
 for YEAR in [6,7,8,9,10,13,14,15,16,17]:
-    chord_s = sentiment_chord_graph(YEAR, chord_sentiment)
+    chord_s = sentiment_chord_graph(YEAR, chord_sentiment_pre)
     renderer = hv.renderer('bokeh')
     renderer.theme = Theme('assets/theme_chord.json') #'dark_minimal'
     renderer.save(chord_s, f'assets/graph_chord_sentiment_{YEAR}')
