@@ -20,11 +20,13 @@ import json
 from collections import Counter
 from colour import Color
 import plotly.graph_objects as go
+from plotly.express.colors import sample_colorscale
 import holoviews as hv
 from holoviews import opts, dim
 from bokeh.models import HoverTool
 from bokeh.themes import Theme
-from nltk.sentiment import SentimentIntensityAnalyzer
+from nltk.sentiment import SentimentIntensityAnalyzer #joblib-1.2.0 nltk-3.8.1 regex-2023.3.23
+from wordcloud import WordCloud, STOPWORDS #wordcloud-1.8.2.2
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -74,7 +76,7 @@ sidebar = html.Div(
                 dbc.NavLink(
                     [
                         html.I(className="fas fa-envelope-open-text me-2"),
-                        html.Span("Sth else", style={"color": "#FEFEFE"}),
+                        html.Span("Text analysis", style={"color": "#FEFEFE"}),
                     ],
                     href="/page-2", 
                     active="exact",
@@ -107,6 +109,7 @@ sentiment = email_df['Subject'].apply(lambda x: sia.polarity_scores(x))
 email_df[['neg', 'neu', 'pos', 'compound']] = pd.json_normalize(sentiment)
 
 cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
+discrete_colors = sample_colorscale('viridis', [0.6, 1.0, 0.4, 0.2, 0.8, 0])
 
 # get all unique email subject that have a response
 all_re = []
@@ -275,6 +278,214 @@ def bar_deps(YEAR, analize_by):
     fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
     return fig
 
+#**************************************
+# Ramon's preprocessing of the data and functions:
+#**************************************
+def get_news_papers():
+    """ 
+    This function makes a dictionary that contains:
+    - keys : news paper names
+    - values : a list of all files that are written by this news paper
+    """
+    news_papers = {}
+
+    for k in range(845):
+        path = 'data/articles/' + str(k) + '.txt'
+        
+        # collect the name of the news paper and remove the final space where needed
+        title = next(line for line in open(path, 'r', encoding='latin-1').read().split('\n') if line != '')
+        if title[-1] == ' ':
+            title = title[:-1]
+
+        # add the news paper and the index of the file to the dictionary
+        if title not in news_papers.keys():
+            news_papers[title] = [k]
+        else:
+            news_papers[title].append(k)
+
+    return news_papers
+
+news_papers = get_news_papers()
+news_papers_names = list(news_papers.keys())
+
+removable_punctuation = '",:;?!()-.'
+removable_words = set(STOPWORDS)
+
+def get_word_frequency(file_list: list, rem_punc: str, rem_words: list) -> Counter:
+    counter = Counter()
+    
+    for file in file_list:
+        path = 'data/articles/' + str(file) + '.txt'
+        
+        with open(path, encoding='latin-1') as f:
+            words = f.read().split()
+            words_lower = [word.lower() for word in words]
+            no_punc = [''.join(char for char in word if char not in rem_punc) for word in words_lower]
+            interesting_words = [word for word in no_punc if word not in rem_words and word != '']
+            counter = counter + Counter(interesting_words)
+
+    return counter
+
+
+def plot_most_common_words(news_paper : str, n : int):
+    files = news_papers[news_paper]
+    counter = get_word_frequency(files, removable_punctuation, removable_words)
+    df = pd.DataFrame(dict(counter.most_common(n)).items(), columns=['Word', 'Frequency'])
+    
+    fig = px.bar(df, x='Word', y='Frequency', color='Frequency', color_continuous_scale='viridis', title='Top ' + str(n) + ' most frequent words for "' + news_paper + '"')
+    fig.update_layout(paper_bgcolor='#26232C', plot_bgcolor='#26232C', font_color = "#FEFEFE", font_size=13, yaxis=dict(gridcolor='#5c5f63'), font=dict(size=10))
+    return fig
+
+
+def plot_freq_words(words: list, news_papers_list : list = []):
+    if len(news_papers_list) > 10:
+        words = [words[0]]
+    
+    words_lower = [word.lower() for word in words]
+
+    freq_words = {w:0 for w in words_lower}
+
+    if news_papers_list == []:
+        for k in range(845):
+            path = 'data/articles/' + str(k) + '.txt'
+            for word in words_lower:
+                with open(path) as f:
+                    read_words = f.read().split()
+                    read_words_lower = [word.lower() for word in read_words]
+                    freq_words[word] = freq_words[word] + read_words_lower.count(word)
+        
+        freq_words = {k: v for k, v in freq_words.items() if v > 0}
+
+        paper_counts_sorted = dict(sorted(freq_words.items(), key=lambda item: item[1], reverse=True))
+        df = pd.DataFrame(paper_counts_sorted.items(), columns=['Word', 'Frequency'])
+        
+        title = 'Frequency of given words combined for all newspapers'
+        fig = px.bar(df, x='Word', y='Frequency', color='Frequency', color_continuous_scale='viridis', title=title)
+        fig.update_layout(paper_bgcolor='#26232C', plot_bgcolor='#26232C', font_color = "#FEFEFE", font_size=13, yaxis=dict(gridcolor='#5c5f63'), font=dict(size=10))
+        return fig
+    
+    else:
+        paper_freqs = {paper: freq_words.copy() for paper in news_papers_list}
+        for paper in news_papers_list:
+            files = news_papers[paper]
+            for file in files:
+                path = 'data/articles/' + str(file) + '.txt'
+                for word in words_lower:
+                    with open(path) as f:
+                        read_words = f.read().split()
+                        read_words_lower = [word.lower() for word in read_words]
+                        no_punc_words = [''.join(char for char in word if char not in removable_punctuation) for word in read_words_lower]
+                        no_punc_words = list(filter(None, no_punc_words))
+                        paper_freqs[paper][word] = paper_freqs[paper][word] + no_punc_words.count(word)
+
+        
+        for key, val in paper_freqs.items():
+            paper_freqs[key] = {k: v for k, v in val.items() if v > 0}
+
+        df = pd.DataFrame.from_dict(paper_freqs, orient="index").stack().to_frame().reset_index()
+        df.rename(columns={'level_0': 'Newspaper', 'level_1': 'Word', 0: 'Frequency'}, inplace=True)
+        
+        title = 'Frequency of given words per newspaper'
+        fig = px.bar(df, x='Newspaper', y='Frequency', color='Word', barmode='group', text='Word', color_discrete_sequence= discrete_colors, title=title)
+        fig.update_layout(paper_bgcolor='#26232C', plot_bgcolor='#26232C', font_color = "#FEFEFE", font_size=13, yaxis=dict(gridcolor='#5c5f63'), font=dict(size=10))
+        return fig
+    
+def centrum_sentinel(path : str):
+    lines = [line for line in open(path, 'r').read().split('\n')]
+    date = lines[3] +' '+ lines[5][0:4]
+    
+    return dt.strptime(date, '%d %B %Y %H%M')
+
+
+def modern_rubicon(path : str):
+    lines = [line for line in open(path, 'r').read().split('\n')]
+    split_line = lines[5].split('-')[0].split(' ')
+    
+    time = [word for word in split_line if word!='' and word[0].isdigit()]
+    
+    if len(time) > 1:
+        time = ['0'+n for n in time if len(n)==3]
+    if len(time[0]) == 3:
+        time[0] = '0'+time[0]
+
+    date = lines[3] +' '+ time[0]
+        
+    return dt.strptime(date, '%d %B %Y %H%M')
+
+def tethys_news(path : str, file : int):
+    
+    am_files = [92, 453, 539, 726, 829]
+
+    lines = [line for line in open(path, 'r').read().split('\n')]
+    split_line = lines[5].split(' ')
+
+    time = [word for word in split_line if word!='' and word[0].isdigit()]
+    if time == []:
+        time = '0705'
+    else:
+        time = time[0].replace(':', '')
+        if len(time) == 3:
+            time = '0' + time
+
+    if file in am_files:
+        time = time + 'AM'
+    else:
+        time = time + 'PM'
+
+    date = lines[3] +' '+ time
+    
+    return dt.strptime(date, '%d %B %Y %I%M%p')
+
+
+def plot_sentiment_newspaper(newspaper : str):
+    files = news_papers[newspaper]
+    sia = SentimentIntensityAnalyzer()
+
+    dates = []
+    sent_scores = []
+
+    for file in files:
+        path = 'data/articles/' + str(file) + '.txt'
+        
+        if newspaper == 'Centrum Sentinel':
+            date = centrum_sentinel(path)
+        
+        elif newspaper =='Modern Rubicon':
+            date = modern_rubicon(path)
+
+        elif newspaper == 'Tethys News':
+            date = tethys_news(path, file)
+        
+        else:
+            date = next(line for line in open(path, 'r').read().split('\n') if line != '' and line[0].isdigit() and line.count('of')==0)
+
+            if date[-1] == ' ':
+                date = date[:-1]
+            if date == '21 January 2014  1405':
+                date = '21 January 2014'
+            if date == '13June 2010':
+                date = '13 June 2010'
+
+            if date.count('/') > 0:
+                date = dt.strptime(date, '%Y/%m/%d').date()
+            else:
+                date = dt.strptime(date, '%d %B %Y').date()
+        
+        dates.append(date)
+        
+        with open(path, 'r') as f:
+            sent = sia.polarity_scores(f.read())
+            sent_scores.append(sent['compound'])
+
+    d = {'Date': dates, 'Sentiment Score': sent_scores}
+    df = pd.DataFrame(d).sort_values('Date').reset_index(drop='index')
+    
+    fig = px.line(df, x='Date', y='Sentiment Score', title='Sentiment score over time for "' + newspaper + '"')
+    fig.update_traces(mode="markers+lines", line_color='#ffff33')
+    fig.update_layout(paper_bgcolor='#26232C', plot_bgcolor='#26232C', font_color = "#FEFEFE", xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#5c5f63', zerolinecolor='#5c5f63'), font=dict(size=10))
+    return fig
+
+
 ########## RENDER PAGE CONTENT --> I.E. CHANGE THE PAGE WHEN THE USER NAVIGATES TO DIFFERENT PAGE VIA THE SIDEBAR ##########
 @app.callback(
     Output("page-content", "children"),
@@ -349,13 +560,78 @@ def render_page_content(pathname):
     ])
 
     elif pathname == "/page-2": #THIS IS AN EXAMPLE FOR NOW
-        return [
-                html.H1('High School in Iran',
-                        style={'textAlign':'center'}),
-                dcc.Graph(id='bargraph',
-                         figure=px.bar(df, barmode='group', x='Years',
-                         y=['Girls High School', 'Boys High School']))
-                ]
+        return html.Div(className='row0-ramon', children=[        
+            html.Div(children=[html.H1('NewsPaper Analysis')]),
+            
+            html.Div(className='row1-1-ramon',
+                     children=[
+                        html.Div(className='row2-3-ramon',
+                                 children=[
+                                    dcc.Markdown(d("""
+                                        **Word cloud of the most frequent words** 
+                                        """), style = {'width':'100%', 'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
+                                    html.Img(className='img-ramon', src="assets/wordcloud.png"),            
+                        ]),
+                        
+                        
+                        html.Div(className='row2-0-ramon',
+                                 children=[
+                                    html.Div(className='row2-1-ramon', 
+                                             children=[
+                                                html.Div(className='row3-ramon',
+                                                            children=[
+                                                                dcc.Markdown("Type some words, seperated by spaces, to show their frequencies:", style = {'font-size': 16, "color": '#FEFEFE'}),
+                                                                dcc.Input(id='multi-words', value='kronos pok', type='text', placeholder='Type your words here', style={'width':'100%'})
+                                                                
+                                                ]),
+                                                html.Div(className='graph-ramon',
+                                                            children=[
+                                                                dcc.Graph(id="freq-words", figure=plot_freq_words(['kronos', 'pok'], news_papers_names))
+                                                            ])
+                                             ]),
+                                    html.Div(className='row2-2-ramon',
+                                             children=[
+                                                dcc.Markdown("Select the newspaper(s)", style = {'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
+                                                dcc.Checklist(id="all-or-none", options=[{"label": "(De)Select All", "value": "All"}], value=[], style={'font-size': 16, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'}),
+                                                dcc.Checklist(options=news_papers_names, value=news_papers_names, id='np-dropdown1', style={'font-size': 16, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'})
+                                             ])
+                                    
+                        ])
+                        
+                     ]),
+            
+            html.Div(className='row1-2-ramon', 
+                     children=[
+                        html.Div(style={'width':'30%'}, children=[
+                            dcc.Markdown("Choose the number of words for the left graph (1-50):", style = {'font-size': 16, "color": '#FEFEFE'}),
+                            dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=1, max=50, step=1, style = {'width': '25%'})
+                        ]),
+                        html.Div(style={'width':'40%'}, children=[
+                            dcc.Markdown("Choose the newspaper for both graphs:", style = {'font-size': 16, "color": '#FEFEFE'}),
+                            dcc.Dropdown(options=news_papers_names, value='The Orb', id='np-dropdown2', placeholder='Select a newspaper')
+                        ])  
+                     ]),
+
+            html.Div(className='row1-ramon',
+                     children=[
+                        html.Div(className='row2-ramon',
+                                 children=[        
+                                    html.Div(className='graph-ramon',
+                                             children=[
+                                                dcc.Graph(id="mc-words", figure=plot_most_common_words('The Orb', 20))
+                                             ]
+                                    )
+                        ]),
+                        html.Div(className='row2-ramon',
+                                 children=[
+                                    html.Div(className='graph-ramon',
+                                             children=[
+                                                dcc.Graph(id="sentiment", figure=plot_sentiment_newspaper('The Orb'))
+                                             ]
+                                    )
+                        ])
+                     ])
+        ])
     # if the user tries to reach a different page, return a 404 message
     return dbc.Jumbotron(
         [
@@ -382,6 +658,39 @@ def update_output(value, value2):
     YEAR = value
     analize_by = value2
     return bar_deps(value, value2)
+
+
+# Ramon's callbacks
+@app.callback(
+    Output("np-dropdown1", "value"),
+    [Input("all-or-none", "value")]
+)
+def select_all_none(all_selected):
+    all_or_none = []
+    all_or_none = [paper for paper in news_papers_names if all_selected]
+    return all_or_none
+
+@app.callback(
+    dash.dependencies.Output('freq-words', 'figure'),
+    dash.dependencies.Input('multi-words', 'value'),
+    dash.dependencies.Input('np-dropdown1', 'value'))
+def update_output(value1, value2):
+    words = value1.split(' ')
+    return plot_freq_words(words, value2)
+
+@app.callback(
+    dash.dependencies.Output('mc-words', 'figure'),
+    dash.dependencies.Input('np-dropdown2', 'value'),
+    dash.dependencies.Input('input-number', 'value'))
+def update_output(value1, value2):
+    return plot_most_common_words(value1, value2)
+
+@app.callback(
+    dash.dependencies.Output('sentiment', 'figure'),
+    dash.dependencies.Input('np-dropdown2', 'value'))
+def update_output(value1):
+    return plot_sentiment_newspaper(value1)
+
 
 if __name__=='__main__':
     app.run_server(debug=True, port=3000)
