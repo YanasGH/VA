@@ -15,10 +15,10 @@ import seaborn as sns
 from textwrap import dedent as d
 import copy
 from collections import Counter
-import networkx as nx #ADDED
-import json #ADDED
-from collections import Counter #ADDED 
-from colour import Color #ADDED
+import networkx as nx 
+import json
+from collections import Counter
+from colour import Color
 import plotly.graph_objects as go
 import holoviews as hv
 from holoviews import opts, dim
@@ -232,24 +232,6 @@ df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget
 
 YEAR = 6
 analize_by = 'Department'
-# def chord_graph(YEAR):
-#     df_chord_edges_filtered = df_chord_edges[df_chord_edges['Date']==str(YEAR)].drop(columns = ['Date']) #using the df outside the function
-#     tooltips = [('Department', '@Department'), ('Name', '@Name')]
-#     hover = HoverTool(tooltips=tooltips)
-#     hv.extension('bokeh')
-#     hv.output(size=200)
-
-#     df_chord_nodes_filtered = hv.Dataset(df_chord_nodes, 'index')
-
-#     chord = hv.Chord((df_chord_edges_filtered, df_chord_nodes_filtered))
-#     chord.opts(opts.Chord(inspection_policy='nodes', cmap=cmap_custom, edge_cmap=cmap_custom,
-#                                  edge_color=dim('Gsource').str(), labels='Name', node_color=dim('Department').str(),
-#                                  symmetric=True, bgcolor = '#26232C', label_text_color='#FEFEFE', tools = [hover]))
-    
-#     renderer = hv.renderer('bokeh')
-#     renderer.theme = Theme('assets/theme_chord.json') #'dark_minimal'
-#     renderer.save(chord, 'assets/graph_chord')
-#     return 'assets/graph_chord.html'
 def chord_graph(YEAR, analize_by):
     if analize_by == 'Department':
         return f'assets/graph_chord_{YEAR}.html'
