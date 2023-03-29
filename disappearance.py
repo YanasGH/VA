@@ -1,4 +1,3 @@
-
 import dash
 import dash_bootstrap_components as dbc
 import dash_html_components as html
@@ -605,7 +604,7 @@ def render_page_content(pathname):
                      children=[
                         html.Div(style={'width':'30%'}, children=[
                             dcc.Markdown("Choose the number of words for the left graph (1-50):", style = {'font-size': 16, "color": '#FEFEFE'}),
-                            dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=1, max=50, step=1, style = {'width': '25%'})
+                            dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=5, max=50, step=1, style = {'width': '25%'})
                         ]),
                         html.Div(style={'width':'40%'}, children=[
                             dcc.Markdown("Choose the newspaper for both graphs:", style = {'font-size': 16, "color": '#FEFEFE'}),
