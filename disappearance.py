@@ -581,7 +581,7 @@ def render_page_content(pathname):
                                                 html.Div(className='row3-ramon',
                                                             children=[
                                                                 dcc.Markdown("Type some words, seperated by spaces, to show their frequencies:", style = {'font-size': 16, "color": '#FEFEFE'}),
-                                                                dcc.Input(id='multi-words', value='kronos pok', type='text', placeholder='Type your words here', style={'width':'100%'})
+                                                                dcc.Input(id='multi-words', value='kronos pok', type='text', placeholder='Type your words here', style={'width':'95%'})
                                                                 
                                                 ]),
                                                 html.Div(className='graph-ramon',
@@ -592,8 +592,8 @@ def render_page_content(pathname):
                                     html.Div(className='row2-2-ramon',
                                              children=[
                                                 dcc.Markdown("Select the newspaper(s)", style = {'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
-                                                dcc.Checklist(id="all-or-none", options=[{"label": "(De)Select All", "value": "All"}], value=[], style={'font-size': 16, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'}),
-                                                dcc.Checklist(options=news_papers_names, value=news_papers_names, id='np-dropdown1', style={'font-size': 16, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'})
+                                                dcc.Checklist(id="all-or-none", options=[{"label": "(De)Select All", "value": "All"}], value=[], style={'font-size': 12, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'}),
+                                                dcc.Checklist(options=news_papers_names, value=news_papers_names, id='np-dropdown1', style={'font-size': 12, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'})
                                              ])
                                     
                         ])
@@ -602,8 +602,8 @@ def render_page_content(pathname):
             
             html.Div(className='row1-2-ramon', 
                      children=[
-                        html.Div(style={'width':'30%'}, children=[
-                            dcc.Markdown("Choose the number of words for the left graph (1-50):", style = {'font-size': 16, "color": '#FEFEFE'}),
+                        html.Div(style={'width':'40%'}, children=[
+                            dcc.Markdown("Choose the number of words for the left graph (5-50):", style = {'font-size': 16, "color": '#FEFEFE'}),
                             dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=5, max=50, step=1, style = {'width': '25%'})
                         ]),
                         html.Div(style={'width':'40%'}, children=[
