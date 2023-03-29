@@ -350,7 +350,7 @@ def plot_freq_words(words: list, news_papers_list : list = []):
         for k in range(845):
             path = 'data/articles/' + str(k) + '.txt'
             for word in words_lower:
-                with open(path) as f:
+                with open(path,  encoding='latin-1') as f:
                     read_words = f.read().split()
                     read_words_lower = [word.lower() for word in read_words]
                     freq_words[word] = freq_words[word] + read_words_lower.count(word)
@@ -372,7 +372,7 @@ def plot_freq_words(words: list, news_papers_list : list = []):
             for file in files:
                 path = 'data/articles/' + str(file) + '.txt'
                 for word in words_lower:
-                    with open(path) as f:
+                    with open(path, encoding='latin-1') as f:
                         read_words = f.read().split()
                         read_words_lower = [word.lower() for word in read_words]
                         no_punc_words = [''.join(char for char in word if char not in removable_punctuation) for word in read_words_lower]
@@ -458,7 +458,7 @@ def plot_sentiment_newspaper(newspaper : str):
             date = tethys_news(path, file)
         
         else:
-            date = next(line for line in open(path, 'r').read().split('\n') if line != '' and line[0].isdigit() and line.count('of')==0)
+            date = next(line for line in open(path, 'r',  encoding='latin-1').read().split('\n') if line != '' and line[0].isdigit() and line.count('of')==0)
 
             if date[-1] == ' ':
                 date = date[:-1]
@@ -474,7 +474,7 @@ def plot_sentiment_newspaper(newspaper : str):
         
         dates.append(date)
         
-        with open(path, 'r') as f:
+        with open(path, 'r',  encoding='latin-1') as f:
             sent = sia.polarity_scores(f.read())
             sent_scores.append(sent['compound'])
 
