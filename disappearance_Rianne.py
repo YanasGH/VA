@@ -457,23 +457,6 @@ def render_page_content(pathname):
                          ],style={'font-size': 13, 'position':'relative', "margin": "auto", "top": "-270px", 'left':0, 'width': "150px"}),
 
             #call backs Rianne
-
-            html.Div(
-                className="Rianne Row",
-                children=[
-                    dcc.Markdown(d("""
-                            Multi-Select Dropdown
-                            """),style = {'font-size': 16, "color": '#FEFEFE'}),
-                    html.Div(
-                        className="six columns",
-                        children=[
-                            dcc.Dropdown(id='dropdown', options=['show workhours','filter RE', 'show number of recipients', 'corresponding day'],multi = True, value = 'show workhours', style={'color': '#26232C', 'font-size': 13}),
-                            html.Br(),
-                            html.Div(id='output-container-chord-value')
-                        ],
-                    ), 
-                ],style={'text-align': 'left','position':'relative', "left": 0, "top": "500 px"}
-            ),
             
             # # display dropdown component
             # html.Div(
@@ -506,11 +489,28 @@ def render_page_content(pathname):
                 children=[dcc.Graph(id="my-graph2",
                                     figure=bar_deps(YEAR, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
                 ),
+            
+            html.Div(
+                className="Rianne Row",
+                children=[
+                    dcc.Markdown(d("""
+                            Multi-Select Dropdown
+                            """),style = {'font-size': 16, "color": '#FEFEFE'}),
+                    html.Div(
+                        className="six columns",
+                        children=[
+                            dcc.Dropdown(id='dropdown', options=['show workhours','filter RE', 'show number of recipients', 'corresponding day'],multi = True, value = 'show workhours', style={'color': '#26232C', 'font-size': 13}),
+                            html.Br(),
+                            html.Div(id='output-container-chord-value')
+                        ],
+                    ), 
+                ],style={'text-align': 'left','position':'relative', "left": -640, "top": "-400 px"}
+            ),
 
             html.Div(
                 className="eight columns",
                 children=[dcc.Graph(id="my-graph-dotplot",
-                                    figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500}
+                                    figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-350px"}
                 ),   
 
             ]
