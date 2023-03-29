@@ -32,6 +32,18 @@ warnings.filterwarnings("ignore")
 df = pd.read_csv('https://raw.githubusercontent.com/Coding-with-Adam/Dash-by-Plotly/master/Bootstrap/Side-Bar/iranian_students.csv')
 ############################## END ##############################
 
+############################## Colors ##############################
+# Main background                   #26232C
+# Secondary background / sidebar    #cbd3dd
+# Color buttons sidebar
+# Text mainbackground               white '#FEFEFE'
+# Text sidebar                      white '#FEFEFE'
+# cmap (rainbow ish)                cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
+# color_discrete_sequence =        ['#B51E17', '#BDC4C5', '#379475']) (red, green, grey)
+
+
+
+
 ########## CONFIGURE APP ##########
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX, 'https://use.fontawesome.com/releases/v6.1.1/css/all.css'], meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1'}])
 server = app.server
@@ -151,6 +163,11 @@ for i in range(len(email_df)):
         to_list.append(emp_dict.get(to))
     email_df['DepTo'][i]=to_list
 
+# data preprocessing to dotplot
+email_df['DateTime'] = pd.to_datetime(email_df['Date'])
+email_df['clean_name_from'] = email_df.From.str[:-19].replace(".", " ")
+email_df['nr_recipients'] = [len(list) for list in email_df['To'].str.replace(',', '').str.split()]
+
 def edge_node(att, toatt, fromatt, day_search=None):
     #compute the edges
     edge_temp = []
@@ -230,8 +247,14 @@ df_chord_nodes = df_chord_nodes.drop(columns=['EmailAddress'])
 df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
 df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
 
+############################# Set variables ####################
 YEAR = 6
+work_hour = 'Yes'
 analize_by = 'Department'
+
+
+################################# Graph functions page 1 ###########################
+
 def chord_graph(YEAR, analize_by):
     if analize_by == 'Department':
         return f'assets/graph_chord_{YEAR}.html'
@@ -274,6 +297,29 @@ def bar_deps(YEAR, analize_by):
 
     fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
     return fig
+
+def dotplotgraph(work_hour = 'Yes', email_df = email_df): ##cbd3dd
+    fig=px.scatter(email_df, x='DateTime', y='clean_name_from',hover_name='Subject', 
+                                                        hover_data=["nr_recipients"], color = 'DepFrom' ) #change hover column names
+    if work_hour == 'Yes':
+        fig.add_vrect(x0 = pd.to_datetime('2014-01-06 9:00'), x1 = pd.to_datetime('2014-01-06 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-07 9:00'), pd.to_datetime('2014-01-07 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-08 9:00'), pd.to_datetime('2014-01-08 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-09 9:00'), pd.to_datetime('2014-01-09 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-10 9:00'), pd.to_datetime('2014-01-10 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+
+        fig.add_vrect(pd.to_datetime('2014-01-13 9:00'), pd.to_datetime('2014-01-13 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-14 9:00'), pd.to_datetime('2014-01-14 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-15 9:00'), pd.to_datetime('2014-01-15 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-16 9:00'), pd.to_datetime('2014-01-16 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+        fig.add_vrect(pd.to_datetime('2014-01-17 9:00'), pd.to_datetime('2014-01-17 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+
+    fig.update_xaxes(title_text = "Date", showgrid=False, color='white')
+    fig.update_yaxes(title_text = 'Person', color = 'white')
+    fig.update_layout({'paper_bgcolor' : '#26232C', 'plot_bgcolor': '#26232C'}, legend_font_color='white')
+    return fig
+
+    
 
 ########## RENDER PAGE CONTENT --> I.E. CHANGE THE PAGE WHEN THE USER NAVIGATES TO DIFFERENT PAGE VIA THE SIDEBAR ##########
 @app.callback(
@@ -328,6 +374,39 @@ def render_page_content(pathname):
                                               ],
                                     ), 
                          ],style={'font-size': 13, 'position':'relative', "margin": "auto", "top": "-270px", 'left':0, 'width': "150px"}),
+
+            #call backs Rianne
+            html.Div(
+                className="two columns",
+                children=[
+                    dcc.Markdown(d("""
+                            Workhours visable
+                            """),style = {'font-size': 16, "color": '#FEFEFE'}),
+                    html.Div(
+                        className="twelve columns",
+                        children=[
+                            dcc.RadioItems(id='work_hour_id', options=['Yes','No'], value = 'Yes', style={'color': '#FEFEFE', 'font-size': 13,  "margin": "auto", "max-width": "800px", 'display': 'flex'}),
+                            html.Br(),
+                            html.Div(id='output-container-range-slider')
+                        ],
+                    ), 
+                ],style={'text-align': 'left','position':'relative',}
+            ),
+            
+            # # display dropdown component
+            # html.Div(
+            #     className="two columns",
+            #     children=[dcc.Markdown(d("""
+            #                 ** **
+            #                 **Analyze by**
+                            
+            #                 """), style = {'font-size': 16, "color": '#FEFEFE'}
+            #                           ),
+            #                 html.Div(className="six columns",
+            #                          children=[dcc.Dropdown(id="input1", options=['Department', 'Sentiment'],placeholder="Analyze by", value='Department'), html.Div(id='output-container-dropdown')
+            #                                   ],
+            #                         ), 
+            #              ],style={'font-size': 13, 'position':'relative', "margin": "auto", "top": "-270px", 'left':0, 'width': "150px"}),
             
             # display the graph component
             html.Div(
@@ -343,6 +422,14 @@ def render_page_content(pathname):
                 children=[dcc.Graph(id="my-graph2",
                                     figure=bar_deps(YEAR, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
                 ),
+
+            html.Div(
+                className="eight columns",
+                children=[dcc.Graph(id="my-graph-dotplot",
+                                    # figure=px.scatter(email_df, x='DateTime', y='clean_name_from',hover_name='Subject', 
+                                    #                     hover_data=["nr_recipients"], color = 'DepFrom')
+                                    figure = dotplotgraph(work_hour,email_df))], style ={'text-align': 'center','position': 'relative', 'width':1500}
+                ),   
 
             ]
         )
@@ -382,6 +469,16 @@ def update_output(value, value2):
     YEAR = value
     analize_by = value2
     return bar_deps(value, value2)
+
+@app.callback(
+    dash.dependencies.Output('my-graph-dotplot', 'figure'),
+    [dash.dependencies.Input('work_hour_id', 'value'), dash.dependencies.Input('input1', 'value')])
+def update_output(value, value2):
+    # to update the global variable of YEAR
+    work_hour = value
+    # analize_by = value2
+    # return bar_deps(value, value2)
+    return dotplotgraph(work_hour, email_df)
 
 if __name__=='__main__':
     app.run_server(debug=True, port=3000)
