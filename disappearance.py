@@ -20,11 +20,13 @@ import json
 from collections import Counter
 from colour import Color
 import plotly.graph_objects as go
+from plotly.express.colors import sample_colorscale
 import holoviews as hv
 from holoviews import opts, dim
 from bokeh.models import HoverTool
 from bokeh.themes import Theme
-from nltk.sentiment import SentimentIntensityAnalyzer
+from nltk.sentiment import SentimentIntensityAnalyzer #joblib-1.2.0 nltk-3.8.1 regex-2023.3.23
+from wordcloud import WordCloud, STOPWORDS #wordcloud-1.8.2.2
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -86,7 +88,7 @@ sidebar = html.Div(
                 dbc.NavLink(
                     [
                         html.I(className="fas fa-envelope-open-text me-2"),
-                        html.Span("Sth else", style={"color": "#FEFEFE"}),
+                        html.Span("Text analysis", style={"color": "#FEFEFE"}),
                     ],
                     href="/page-2", 
                     active="exact",
@@ -119,6 +121,7 @@ sentiment = email_df['Subject'].apply(lambda x: sia.polarity_scores(x))
 email_df[['neg', 'neu', 'pos', 'compound']] = pd.json_normalize(sentiment)
 
 cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
+discrete_colors = sample_colorscale('viridis', [0.6, 1.0, 0.4, 0.2, 0.8, 0])
 
 # get all unique email subject that have a response
 all_re = []
@@ -436,13 +439,78 @@ def render_page_content(pathname):
     ])
 
     elif pathname == "/page-2": #THIS IS AN EXAMPLE FOR NOW
-        return [
-                html.H1('High School in Iran',
-                        style={'textAlign':'center'}),
-                dcc.Graph(id='bargraph',
-                         figure=px.bar(df, barmode='group', x='Years',
-                         y=['Girls High School', 'Boys High School']))
-                ]
+        return html.Div(className='row0-ramon', children=[        
+            html.Div(children=[html.H1('NewsPaper Analysis')]),
+            
+            html.Div(className='row1-1-ramon',
+                     children=[
+                        html.Div(className='row2-3-ramon',
+                                 children=[
+                                    dcc.Markdown(d("""
+                                        **Word cloud of the most frequent words** 
+                                        """), style = {'width':'100%', 'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
+                                    html.Img(className='img-ramon', src="assets/wordcloud.png"),            
+                        ]),
+                        
+                        
+                        html.Div(className='row2-0-ramon',
+                                 children=[
+                                    html.Div(className='row2-1-ramon', 
+                                             children=[
+                                                html.Div(className='row3-ramon',
+                                                            children=[
+                                                                dcc.Markdown("Type some words, seperated by spaces, to show their frequencies:", style = {'font-size': 16, "color": '#FEFEFE'}),
+                                                                dcc.Input(id='multi-words', value='kronos pok', type='text', placeholder='Type your words here', style={'width':'100%'})
+                                                                
+                                                ]),
+                                                html.Div(className='graph-ramon',
+                                                            children=[
+                                                                dcc.Graph(id="freq-words", figure=plot_freq_words(['kronos', 'pok'], news_papers_names))
+                                                            ])
+                                             ]),
+                                    html.Div(className='row2-2-ramon',
+                                             children=[
+                                                dcc.Markdown("Select the newspaper(s)", style = {'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
+                                                dcc.Checklist(id="all-or-none", options=[{"label": "(De)Select All", "value": "All"}], value=[], style={'font-size': 16, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'}),
+                                                dcc.Checklist(options=news_papers_names, value=news_papers_names, id='np-dropdown1', style={'font-size': 16, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'})
+                                             ])
+                                    
+                        ])
+                        
+                     ]),
+            
+            html.Div(className='row1-2-ramon', 
+                     children=[
+                        html.Div(style={'width':'30%'}, children=[
+                            dcc.Markdown("Choose the number of words for the left graph (1-50):", style = {'font-size': 16, "color": '#FEFEFE'}),
+                            dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=1, max=50, step=1, style = {'width': '25%'})
+                        ]),
+                        html.Div(style={'width':'40%'}, children=[
+                            dcc.Markdown("Choose the newspaper for both graphs:", style = {'font-size': 16, "color": '#FEFEFE'}),
+                            dcc.Dropdown(options=news_papers_names, value='The Orb', id='np-dropdown2', placeholder='Select a newspaper')
+                        ])  
+                     ]),
+
+            html.Div(className='row1-ramon',
+                     children=[
+                        html.Div(className='row2-ramon',
+                                 children=[        
+                                    html.Div(className='graph-ramon',
+                                             children=[
+                                                dcc.Graph(id="mc-words", figure=plot_most_common_words('The Orb', 20))
+                                             ]
+                                    )
+                        ]),
+                        html.Div(className='row2-ramon',
+                                 children=[
+                                    html.Div(className='graph-ramon',
+                                             children=[
+                                                dcc.Graph(id="sentiment", figure=plot_sentiment_newspaper('The Orb'))
+                                             ]
+                                    )
+                        ])
+                     ])
+        ])
     # if the user tries to reach a different page, return a 404 message
     return dbc.Jumbotron(
         [
@@ -470,6 +538,7 @@ def update_output(value, value2):
     analize_by = value2
     return bar_deps(value, value2)
 
+<<<<<<< HEAD
 @app.callback(
     dash.dependencies.Output('my-graph-dotplot', 'figure'),
     [dash.dependencies.Input('work_hour_id', 'value'), dash.dependencies.Input('input1', 'value')])
@@ -479,6 +548,40 @@ def update_output(value, value2):
     # analize_by = value2
     # return bar_deps(value, value2)
     return dotplotgraph(work_hour, email_df)
+=======
+
+# Ramon's callbacks
+@app.callback(
+    Output("np-dropdown1", "value"),
+    [Input("all-or-none", "value")]
+)
+def select_all_none(all_selected):
+    all_or_none = []
+    all_or_none = [paper for paper in news_papers_names if all_selected]
+    return all_or_none
+
+@app.callback(
+    dash.dependencies.Output('freq-words', 'figure'),
+    dash.dependencies.Input('multi-words', 'value'),
+    dash.dependencies.Input('np-dropdown1', 'value'))
+def update_output(value1, value2):
+    words = value1.split(' ')
+    return plot_freq_words(words, value2)
+
+@app.callback(
+    dash.dependencies.Output('mc-words', 'figure'),
+    dash.dependencies.Input('np-dropdown2', 'value'),
+    dash.dependencies.Input('input-number', 'value'))
+def update_output(value1, value2):
+    return plot_most_common_words(value1, value2)
+
+@app.callback(
+    dash.dependencies.Output('sentiment', 'figure'),
+    dash.dependencies.Input('np-dropdown2', 'value'))
+def update_output(value1):
+    return plot_sentiment_newspaper(value1)
+
+>>>>>>> 6cf06500bdd88eb0394f24b74fc4669f5572bd34
 
 if __name__=='__main__':
     app.run_server(debug=True, port=3000)
