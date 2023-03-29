@@ -3,3 +3,5 @@ colour
 holoviews
 bokeh
 nltk
+dash == 2.8.1
+gensim
