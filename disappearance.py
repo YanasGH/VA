@@ -34,6 +34,16 @@ warnings.filterwarnings("ignore")
 df = pd.read_csv('https://raw.githubusercontent.com/Coding-with-Adam/Dash-by-Plotly/master/Bootstrap/Side-Bar/iranian_students.csv')
 ############################## END ##############################
 
+############################## Colors ##############################
+# Main background                   #26232C
+# Secondary background / sidebar    #cbd3dd
+# Color buttons sidebar
+# Text mainbackground               white '#FEFEFE'
+# Text sidebar                      white '#FEFEFE'
+# cmap (rainbow ish)                cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
+# color_discrete_sequence =        ['#B51E17', '#BDC4C5', '#379475']) (red, green, grey)
+# discrete_colors = sample_colorscale('viridis', [0.6, 1.0, 0.4, 0.2, 0.8, 0])
+
 ########## CONFIGURE APP ##########
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.LUX, 'https://use.fontawesome.com/releases/v6.1.1/css/all.css'], meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1'}])
 server = app.server
@@ -105,6 +115,7 @@ sia = SentimentIntensityAnalyzer()
 ########## IMPORT DATA AND PREPROCESS ##########
 employee_recs = pd.read_excel("EmployeeRecords.xlsx")
 email_df = pd.read_csv('email_headers.csv', encoding='cp1252')
+classification = pd.read_csv('email_classification.csv', encoding='cp1252')
 sentiment = email_df['Subject'].apply(lambda x: sia.polarity_scores(x))
 email_df[['neg', 'neu', 'pos', 'compound']] = pd.json_normalize(sentiment)
 
@@ -153,6 +164,22 @@ for i in range(len(email_df)):
     for to in email_df['To'][i].split(', '):
         to_list.append(emp_dict.get(to))
     email_df['DepTo'][i]=to_list
+
+# data preprocessing to dotplot
+email_df['DateTime'] = pd.to_datetime(email_df['Date'])
+email_df['clean_name_from'] = email_df.From.str[:-19].replace(".", " ")
+email_df['nr_recipients'] = [len(list) for list in email_df['To'].str.replace(',', '').str.split()]
+email_df = email_df.sort_values('DepFrom')
+
+email_df['Subject without re'] = email_df['Subject'].apply(lambda x: x[4:] if x.startswith('Re: ') or x.startswith('RE: ') else x )
+email_first = email_df.drop_duplicates(subset = ['Subject'], keep='first' )
+#cleaning classification
+classification.replace('Hey, Iâ€™m going home sick.', 'Hey, I’m going home sick.', inplace=True)
+classification.replace('Iâ€™m in! -  post a list','I’m in! -  post a list', inplace=True )
+classification.replace('Whoâ€™s tracking the office pool', 'Who’s tracking the office pool', inplace=True)
+classification['Subject without re'] = classification['Subject']
+email_df = email_df.merge(classification[['Subject without re','class']], on='Subject without re', how = 'outer')
+# email_df['class'] = email_df.merge(classification, left_on='Subject without re', right_on='Subject')
 
 def edge_node(att, toatt, fromatt, day_search=None):
     #compute the edges
@@ -233,8 +260,15 @@ df_chord_nodes = df_chord_nodes.drop(columns=['EmailAddress'])
 df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
 df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
 
+############################ Set variables ####################
 YEAR = 6
 analize_by = 'Department'
+color_dot = 'Department'
+c_map_dep =  {'Administration':'#5b4dd6', 'Engineering':'#c933bc', 'Executive': '#ffc60a','Facilities': '#ff5960','Information Technology': '#ff9232','Security': '#ff2b90'}
+c_map_sent = {'pos': '#379475','neu': '#BDC4C5', 'neg': '#B51E17'}
+c_map_class = dict(zip(['Work', 'Change/schedule', 'Social', 'Weird', 'Other', 'Undefined', 'Spam'], px.colors.sequential.Viridis_r[:7]))
+
+################################# Graph functions page 1 ###########################
 def chord_graph(YEAR, analize_by):
     if analize_by == 'Department':
         return f'assets/graph_chord_{YEAR}.html'
@@ -276,6 +310,66 @@ def bar_deps(YEAR, analize_by):
         
 
     fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
+    return fig
+
+def dotplotgraph( color_dot = 'Department', YEAR='6', dropdown = [], category = 'All'): ##cbd3dd
+    b_size = None
+    work_hour = 'No'
+    from_chord = 'No'
+    data = email_df
+    # RE = False
+
+    color_dot_name = {'Department': 'DepFrom', 'Sentiment': 'sentiment'}[color_dot]
+    c_dict = c_map_dep
+    if color_dot_name == 'sentiment':
+        c_dict = c_map_sent
+
+    if 'show number of recipients' in dropdown:
+        b_size = "nr_recipients"
+    if 'show workhours' in dropdown:
+        work_hour = 'Yes'
+    if 'corresponding day' in dropdown:
+        from_chord = 'yes'
+    if 'filter RE' in dropdown:
+        data = email_df.drop_duplicates(subset = ['Subject'], keep='first' )
+        # RE = True
+    if category != 'All':
+        data = data[data['class'] == category]
+        # keep colors
+    if 'show categories' in dropdown:
+        if category == 'All':
+            color_dot_name='class'
+            color_dot = 'Class'
+            c_dict = c_map_class
+
+
+
+    if from_chord == 'No':
+        fig=px.scatter(data, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
+                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict) #change hover column names color_discrete_map= cmap_custom
+        if work_hour == 'Yes':
+            fig.add_vrect(x0 = pd.to_datetime('2014-01-06 9:00'), x1 = pd.to_datetime('2014-01-06 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-07 9:00'), pd.to_datetime('2014-01-07 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-08 9:00'), pd.to_datetime('2014-01-08 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-09 9:00'), pd.to_datetime('2014-01-09 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-10 9:00'), pd.to_datetime('2014-01-10 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+
+            fig.add_vrect(pd.to_datetime('2014-01-13 9:00'), pd.to_datetime('2014-01-13 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-14 9:00'), pd.to_datetime('2014-01-14 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-15 9:00'), pd.to_datetime('2014-01-15 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-16 9:00'), pd.to_datetime('2014-01-16 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-17 9:00'), pd.to_datetime('2014-01-17 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+
+    else:
+        subset = data[data['Day']==str(YEAR)]
+        fig=px.scatter(subset, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
+                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict ) #change hover column names
+        if work_hour == 'Yes': # why does this not work??
+            fig.add_vrect(pd.to_datetime('2014-01-'+str(YEAR)+' 9:00'), pd.to_datetime('2014-01-'+str(YEAR)+' 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+
+    fig.update_xaxes(title_text = "Date", showgrid=False, color='white')
+    fig.update_yaxes(title_text = 'Person', color = 'white')
+    fig.update_layout({'paper_bgcolor' : '#26232C', 'plot_bgcolor': '#26232C'}, legend_font_color='white', legend_title =color_dot)
     return fig
 
 #**************************************
@@ -496,6 +590,7 @@ def render_page_content(pathname):
     if pathname == "/": 
         return home.layout
 
+################ page 1 ########################
     elif pathname == "/page-1":
         return html.Div([
     html.Div([html.H1("Email Correspondence Network Graph \n")],
@@ -554,11 +649,48 @@ def render_page_content(pathname):
                 children=[dcc.Graph(id="my-graph2",
                                     figure=bar_deps(YEAR, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
                 ),
+            html.Div(
+                className="Rianne Row",
+                children=[
+                    dcc.Markdown(d("""
+                            Multi-Select Dropdown
+                            """),style = {'font-size': 16, "color": '#FEFEFE'}),
+                    html.Div(
+                        className="six columns",
+                        children=[
+                            dcc.Dropdown(id='dropdown', options=['show workhours','filter RE', 'show number of recipients', 'corresponding day', 'show categories'],multi = True, value = 'show workhours', style={'color': '#26232C', 'font-size': 13}),
+                            html.Br(),
+                            html.Div(id='output-container-chord-value')
+                        ],
+                    ), ],style={'text-align': 'left','position':'relative', "left": -640, "top": "-400 px"}
+                ),
+            html.Div(
+                className="Rianne Row",
+                children=[
+                    dcc.Markdown(d("""
+                        Select category
+                        """), style = {'font-size': 16, "color": '#FEFEFE'}
+                                  ),
+                        html.Div(className="six columns",
+                                 children=[dcc.Dropdown(id="category", options=['All', 'Work', 'Change/schedule', 'Social', 'Weird', 'Other', 'Undefined','Spam'],value='All', clearable=False,), 
+                                           html.Div(id='output-container-cat')
+                                          ],
+                                ), 
+                ],style={'text-align': 'left','position':'relative', "left": -550, "top": "-400 px"}
+            ),
+
+            html.Div(
+                className="eight columns",
+                children=[dcc.Graph(id="my-graph-dotplot",
+                                    # commented configuration in the github. Gives a bit of overlap on my laptop (Rianne) #330
+                                    # figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-350px"} 
+                                    figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-300px"}
+                ),
 
             ]
         )
     ])
-
+######################## page 2 ############################
     elif pathname == "/page-2": #THIS IS AN EXAMPLE FOR NOW
         return html.Div(className='row0-ramon', children=[        
             html.Div(children=[html.H1('NewsPaper Analysis')]),
@@ -658,7 +790,12 @@ def update_output(value, value2):
     YEAR = value
     analize_by = value2
     return bar_deps(value, value2)
-
+@app.callback(
+    dash.dependencies.Output('my-graph-dotplot', 'figure'),
+    [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value') , #dash.dependencies.Input('color_dot', 'value')
+     dash.dependencies.Input('dropdown', 'value'),dash.dependencies.Input('category', 'value')])
+def update_output(chordplot, c_dot, dropdown, category):
+    return dotplotgraph( c_dot, YEAR = chordplot, dropdown = dropdown, category=category)
 
 # Ramon's callbacks
 @app.callback(
