@@ -120,7 +120,8 @@ sentiment = email_df['Subject'].apply(lambda x: sia.polarity_scores(x))
 email_df[['neg', 'neu', 'pos', 'compound']] = pd.json_normalize(sentiment)
 
 cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
-discrete_colors = sample_colorscale('viridis', [0.6, 1.0, 0.4, 0.2, 0.8, 0])
+# colors for plot_freq_words
+discrete_colors = sample_colorscale('viridis', [0.6, 1.0, 0.4, 0.2, 0.8, 0])  
 
 # get all unique email subject that have a response
 all_re = []
@@ -378,7 +379,7 @@ def dotplotgraph( color_dot = 'Department', YEAR='6', dropdown = [], category = 
 def get_news_papers():
     """ 
     This function makes a dictionary that contains:
-    - keys : news paper names
+    - keys : newspaper names
     - values : a list of all files that are written by this news paper
     """
     news_papers = {}
@@ -399,13 +400,23 @@ def get_news_papers():
 
     return news_papers
 
+# get all the newspapers, their corresponding files and names and store them
 news_papers = get_news_papers()
 news_papers_names = list(news_papers.keys())
 
+# set some punctuation and stopwords to remove from the words within the articles
 removable_punctuation = '",:;?!()-.'
 removable_words = set(STOPWORDS)
 
 def get_word_frequency(file_list: list, rem_punc: str, rem_words: list) -> Counter:
+    """
+    This function goes over news articles and creates a counter to keep track of how many times each words appears.
+
+    - file_list: list of the news articles
+    - rem_punc: punctuation that can be removed from words
+    - rem_words: stopwords (often used, meaningless words (for sentiment)) that we filter out
+    Returns: counter of the interesting words
+    """
     counter = Counter()
     
     for file in file_list:
@@ -413,8 +424,11 @@ def get_word_frequency(file_list: list, rem_punc: str, rem_words: list) -> Count
         
         with open(path, encoding='latin-1') as f:
             words = f.read().split()
+            # convert all words to lower case
             words_lower = [word.lower() for word in words]
+            # remove punctuation
             no_punc = [''.join(char for char in word if char not in rem_punc) for word in words_lower]
+            # remove stopwords
             interesting_words = [word for word in no_punc if word not in rem_words and word != '']
             counter = counter + Counter(interesting_words)
 
@@ -422,7 +436,15 @@ def get_word_frequency(file_list: list, rem_punc: str, rem_words: list) -> Count
 
 
 def plot_most_common_words(news_paper : str, n : int):
-    files = news_papers[news_paper]
+    """
+    This function creates a graph that shows the n most frequently occuring words for a given newspaper.
+
+    - news_paper: name of the newspaper of interest
+    - n: number of (most frequent) words to show in the graph
+    Returns: a barchart of the n most frequent words
+    """
+    # retrieve required files form news_papers dictionary for the given newspaper
+    files = news_papers[news_paper] 
     counter = get_word_frequency(files, removable_punctuation, removable_words)
     df = pd.DataFrame(dict(counter.most_common(n)).items(), columns=['Word', 'Frequency'])
     
@@ -432,22 +454,38 @@ def plot_most_common_words(news_paper : str, n : int):
 
 
 def plot_freq_words(words: list, news_papers_list : list = []):
+    """
+    This function creates the graph that shows:
+    1) the total number of occurrences of a given list of words for all news articles
+    2) If a (list of) newspaper(s) is selected, it shows the frequency of the given words for each newspaper
+
+    - words: the words for which the frequencies are retrieved
+    - news_papers_list: the newspapers for which the frequencies of the words are shown.
+    Returns: A graph with word frequencies (for articles of newspapers)
+    """
+
+    # if the number of given newspapers is more than 10, only count the first word
+    # this is done to keep the graph as readable as possible
     if len(news_papers_list) > 10:
         words = [words[0]]
     
     words_lower = [word.lower() for word in words]
 
+    # create a dictionary to count the frequencies of the words
     freq_words = {w:0 for w in words_lower}
 
+    # if no newspaper is given, go over all articles
     if news_papers_list == []:
         for k in range(845):
             path = 'data/articles/' + str(k) + '.txt'
             for word in words_lower:
                 with open(path,  encoding='latin-1') as f:
                     read_words = f.read().split()
+                    # convert to lower case and count the frequencies
                     read_words_lower = [word.lower() for word in read_words]
                     freq_words[word] = freq_words[word] + read_words_lower.count(word)
         
+        # remove words with a frequency of 0
         freq_words = {k: v for k, v in freq_words.items() if v > 0}
 
         paper_counts_sorted = dict(sorted(freq_words.items(), key=lambda item: item[1], reverse=True))
@@ -459,6 +497,7 @@ def plot_freq_words(words: list, news_papers_list : list = []):
         return fig
     
     else:
+        # make containing a dictionary for every newspaper for the word frequencies
         paper_freqs = {paper: freq_words.copy() for paper in news_papers_list}
         for paper in news_papers_list:
             files = news_papers[paper]
@@ -469,6 +508,7 @@ def plot_freq_words(words: list, news_papers_list : list = []):
                         read_words = f.read().split()
                         read_words_lower = [word.lower() for word in read_words]
                         no_punc_words = [''.join(char for char in word if char not in removable_punctuation) for word in read_words_lower]
+                        # remove the words that are empty due to punctuation removal
                         no_punc_words = list(filter(None, no_punc_words))
                         paper_freqs[paper][word] = paper_freqs[paper][word] + no_punc_words.count(word)
 
@@ -485,38 +525,77 @@ def plot_freq_words(words: list, news_papers_list : list = []):
         return fig
     
 def centrum_sentinel(path : str):
+    """
+    This functions retrieves the date and time of the news article at the given path.
+    
+    - path: the location of the article
+    Returns: time that the article was written.
+
+    Note: This is for the Centrum Sentinel newspaper as it only had newsarticles written on the same day.
+    So the graph would have been a vetical line without this. 
+    """
     lines = [line for line in open(path, 'r').read().split('\n')]
+    # up on inspecting the files, the dates and times were always on these specific lines and places
     date = lines[3] +' '+ lines[5][0:4]
     
     return dt.strptime(date, '%d %B %Y %H%M')
 
 
 def modern_rubicon(path : str):
+    """
+    This functions retrieves the date and time of the news article at the given path.
+    
+    - path: the location of the article
+    Returns: time that the article was written.
+
+    Note: This is for the Modern Rubicon newspaper as it only had newsarticles written on the same day.
+    So the graph would have been a vetical line without this. 
+    """
+
     lines = [line for line in open(path, 'r').read().split('\n')]
+    # these were the lines containing the time
     split_line = lines[5].split('-')[0].split(' ')
     
+    # get a list of all words starting with a digit
     time = [word for word in split_line if word!='' and word[0].isdigit()]
     
+    # if multiple words were contained, take the first one
+    # and add a 0 to make sure the time is of from 00:00 instead of i.e. 9:50
     if len(time) > 1:
         time = ['0'+n for n in time if len(n)==3]
     if len(time[0]) == 3:
         time[0] = '0'+time[0]
 
+    # put the date and time together
     date = lines[3] +' '+ time[0]
         
     return dt.strptime(date, '%d %B %Y %H%M')
 
 def tethys_news(path : str, file : int):
+    """
+    This functions retrieves the date and time of the news article at the given path.
     
+    - path: the location of the article
+    Returns: time that the article was written.
+
+    Note: This is for the Tethys News newspaper as it only had newsarticles written on the same day.
+    So the graph would have been a vetical line without this. 
+    """
+    
+    # store the files that contain an AM time instead of PM
     am_files = [92, 453, 539, 726, 829]
 
     lines = [line for line in open(path, 'r').read().split('\n')]
     split_line = lines[5].split(' ')
 
+    # retrieve all words starting with a digit
     time = [word for word in split_line if word!='' and word[0].isdigit()]
+    
+    # one file did not contain a time, so based on context we assumed it
     if time == []:
         time = '0705'
     else:
+        # remove the semicolon in the times
         time = time[0].replace(':', '')
         if len(time) == 3:
             time = '0' + time
@@ -526,12 +605,19 @@ def tethys_news(path : str, file : int):
     else:
         time = time + 'PM'
 
+    # add the date and time together
     date = lines[3] +' '+ time
     
     return dt.strptime(date, '%d %B %Y %I%M%p')
 
 
 def plot_sentiment_newspaper(newspaper : str):
+    """
+    This function creates a graph that shows the sentiment score of the news articles for a given newspaper.
+    
+    - newspaper: the name of the newspaper
+    Returns: a line graph that shows the sentiment over time of the news articles
+    """
     files = news_papers[newspaper]
     sia = SentimentIntensityAnalyzer()
 
@@ -541,6 +627,8 @@ def plot_sentiment_newspaper(newspaper : str):
     for file in files:
         path = 'data/articles/' + str(file) + '.txt'
         
+        # if the newspaper is of one of the three below,it only made news articles during one day, 
+        # so the times were retrieved in a hardcoded way
         if newspaper == 'Centrum Sentinel':
             date = centrum_sentinel(path)
         
@@ -553,6 +641,7 @@ def plot_sentiment_newspaper(newspaper : str):
         else:
             date = next(line for line in open(path, 'r',  encoding='latin-1').read().split('\n') if line != '' and line[0].isdigit() and line.count('of')==0)
 
+            # filter out the faulty dates and correct them
             if date[-1] == ' ':
                 date = date[:-1]
             if date == '21 January 2014  1405':
@@ -560,6 +649,7 @@ def plot_sentiment_newspaper(newspaper : str):
             if date == '13June 2010':
                 date = '13 June 2010'
 
+            # based on the format of the date in the article, create a date object
             if date.count('/') > 0:
                 date = dt.strptime(date, '%Y/%m/%d').date()
             else:
@@ -567,6 +657,7 @@ def plot_sentiment_newspaper(newspaper : str):
         
         dates.append(date)
         
+        # compute the sentiment scores for each article
         with open(path, 'r',  encoding='latin-1') as f:
             sent = sia.polarity_scores(f.read())
             sent_scores.append(sent['compound'])
@@ -697,6 +788,7 @@ def render_page_content(pathname):
             
             html.Div(className='row1-1-ramon',
                      children=[
+                        # div to house the word cloud and its title
                         html.Div(className='row2-3-ramon',
                                  children=[
                                     dcc.Markdown(d("""
@@ -708,6 +800,7 @@ def render_page_content(pathname):
                         
                         html.Div(className='row2-0-ramon',
                                  children=[
+                                    # div to house the search bar and the frequency graph
                                     html.Div(className='row2-1-ramon', 
                                              children=[
                                                 html.Div(className='row3-ramon',
@@ -721,6 +814,7 @@ def render_page_content(pathname):
                                                                 dcc.Graph(id="freq-words", figure=plot_freq_words(['kronos', 'pok'], news_papers_names))
                                                             ])
                                              ]),
+                                    # div to house the newspaper options for the frequency graph
                                     html.Div(className='row2-2-ramon',
                                              children=[
                                                 dcc.Markdown("Select the newspaper(s)", style = {'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
@@ -732,6 +826,7 @@ def render_page_content(pathname):
                         
                      ]),
             
+            # div to house the inputs for the most common words graph and sentiment graph
             html.Div(className='row1-2-ramon', 
                      children=[
                         html.Div(style={'width':'40%'}, children=[
@@ -744,6 +839,7 @@ def render_page_content(pathname):
                         ])  
                      ]),
 
+            # div to house the most common words graph and the sentiment graph
             html.Div(className='row1-ramon',
                      children=[
                         html.Div(className='row2-ramon',
@@ -798,6 +894,7 @@ def update_output(chordplot, c_dot, dropdown, category):
     return dotplotgraph( c_dot, YEAR = chordplot, dropdown = dropdown, category=category)
 
 # Ramon's callbacks
+# callback for the (de)select all checklist
 @app.callback(
     Output("np-dropdown1", "value"),
     [Input("all-or-none", "value")]
@@ -807,6 +904,7 @@ def select_all_none(all_selected):
     all_or_none = [paper for paper in news_papers_names if all_selected]
     return all_or_none
 
+#callback for the frequency graph, using the given words and the selected newspaper
 @app.callback(
     dash.dependencies.Output('freq-words', 'figure'),
     dash.dependencies.Input('multi-words', 'value'),
@@ -815,6 +913,7 @@ def update_output(value1, value2):
     words = value1.split(' ')
     return plot_freq_words(words, value2)
 
+# callback for the most common words graph, using n most frequent words and the selected newspaper
 @app.callback(
     dash.dependencies.Output('mc-words', 'figure'),
     dash.dependencies.Input('np-dropdown2', 'value'),
@@ -822,6 +921,7 @@ def update_output(value1, value2):
 def update_output(value1, value2):
     return plot_most_common_words(value1, value2)
 
+# callback for the sentiment graph, using the selected newspaper
 @app.callback(
     dash.dependencies.Output('sentiment', 'figure'),
     dash.dependencies.Input('np-dropdown2', 'value'))
