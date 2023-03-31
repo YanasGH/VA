@@ -14,10 +14,12 @@ warnings.filterwarnings("ignore")
 
 print('----- Creating and saving 10 graphs -----')
 
+########## IMPORT DATA ##########
 email_df = pd.read_csv('email_headers.csv', encoding='cp1252')
 employee_recs = pd.read_excel("EmployeeRecords.xlsx")
 cmap_custom = ['#5b4dd6', '#c933bc', '#ffc60a', '#ff5960', '#ff9232', '#ff2b90']
 
+########## PREPROCESS DATA ##########
 email_df['Day'] = None
 email_df['DepTo'] = None
 email_df['DepFrom'] = None
@@ -32,6 +34,19 @@ for i in range(len(email_df)):
     email_df['DepTo'][i]=to_list
 
 def edge_node(att, toatt, fromatt):
+    """
+    Computes the edges (from-to email correspondences) and nodes (employees) that are used to create the chord diagram.
+    att: either "EmailAddress" if you wish to get the from-to email correspondences between individual employees or 
+         "CurrentEmploymentType" if you wish to get the from-to email correspondences between departments 
+    toatt: name of the column that contains the recipients, either "To" if att is "EmailAddress" or "DepTo" if att is
+           "CurrentEmploymentType"
+    fromatt: name of the column that contains the sender, either "From" if att is "EmailAddress" or "DepFrom" if att is
+             "CurrentEmploymentType"
+    Returns an adjacency matrix with senders as rows, recipients as column and number of emails sent as values, 
+    a dataframe edge_temp containing the number of times email was exchanged, the source (From/DepFrom) and the target
+    (To/DepTo), a dataframe node_temp containing the employee email and employee name
+    """ 
+    
     #compute the edges
     edge_temp = []
     for day in email_df['Day'].unique():
@@ -80,6 +95,7 @@ def edge_node(att, toatt, fromatt):
 
 _, edge2, node2 = edge_node('EmailAddress', 'To', 'From')
 
+########## put the data in the correct "format" so that it can be used for the chord graph ###########
 name_email_dict = dict(zip(node2['Account'].to_list(), node2['CustomerName'].to_list()))
 emp_dep_dict = dict(zip(employee_recs['EmailAddress'].to_list(), employee_recs['CurrentEmploymentType'].to_list()))
 df_chord_nodes = employee_recs[['EmailAddress']]
@@ -107,8 +123,13 @@ df_chord_nodes = df_chord_nodes.drop(columns=['EmailAddress'])
 df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
 df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
 
-def chord_graph(YEAR):
-    df_chord_edges_filtered = df_chord_edges[df_chord_edges['Date']==str(YEAR)].drop(columns = ['Date']) #using the df outside the function
+def chord_graph(DAY):
+    """
+    Creates a chord diagram of the email correspondences, such that each employee node is colored wrt their department.
+    DAY: the day for which the chord diagram will be created.
+    Returns the created chord diagram.
+    """
+    df_chord_edges_filtered = df_chord_edges[df_chord_edges['Date']==str(DAY)].drop(columns = ['Date']) #using the df outside the function
     tooltips = [('Department', '@Department'), ('Name', '@Name')]
     hover = HoverTool(tooltips=tooltips)
     hv.extension('bokeh')
@@ -123,10 +144,11 @@ def chord_graph(YEAR):
     return chord
 
 c = 1
-for YEAR in [6,7,8,9,10,13,14,15,16,17]:
-    chord_g = chord_graph(YEAR)
+#create a chord diagram for each day in the dataset
+for DAY in [6,7,8,9,10,13,14,15,16,17]:
+    chord_g = chord_graph(DAY)
     renderer = hv.renderer('bokeh')
     renderer.theme = Theme('assets/theme_chord.json')
-    renderer.save(chord_g, f'assets/graph_chord_{YEAR}')
+    renderer.save(chord_g, f'assets/graph_chord_{DAY}')
     print(f'----- {10-c} graphs left -----')
     c+=1
