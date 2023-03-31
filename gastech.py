@@ -959,7 +959,7 @@ def update_output(time, c_dot, dropdown, category):
 def select_all_none(all_selected):
     """
     Updates the output based on a callback. Returns the bar chart based on the callbacks.
-    - all_selected: 
+    - all_selected: callback from the (de)select all checklist (top right)
     """
     all_or_none = []
     all_or_none = [paper for paper in news_papers_names if all_selected]
@@ -973,8 +973,8 @@ def select_all_none(all_selected):
 def update_output(value1, value2):
     """
     Updates the output based on a callback. Returns the bar chart based on the callbacks.
-    - value: 
-    - value2: 
+    - value1: callback of the words typed in the searchbar (top middle)
+    - value2: callback for the selected newspapers in the checklist (top right)
     """
     words = value1.split(' ')
     return plot_freq_words(words, value2)
@@ -987,8 +987,8 @@ def update_output(value1, value2):
 def update_output(value1, value2):
     """
     Updates the output based on a callback. Returns the bar chart based on the callbacks.
-    - value: 
-    - value2: 
+    - value1: callback of the dropdown menu of all the different newspapers (bottom right)
+    - value2: callback of the number shown in the bar (bottom left)
     """
     return plot_most_common_words(value1, value2)
 
@@ -999,7 +999,7 @@ def update_output(value1, value2):
 def update_output(value1):
     """
     Updates the output based on a callback. Returns the line graph based on the callbacks.
-    - value1: 
+    - value1: callback of the dropdown menu of all the different newspapers (bottom right)
     """
     return plot_sentiment_newspaper(value1)
 
