@@ -170,18 +170,17 @@ for i in range(len(email_df)):
 email_df['DateTime'] = pd.to_datetime(email_df['Date'])
 email_df['clean_name_from'] = email_df.From.str[:-19].replace(".", " ")
 email_df['nr_recipients'] = [len(list) for list in email_df['To'].str.replace(',', '').str.split()]
-email_df = email_df.sort_values('DepFrom')
 
-email_df['Subject without re'] = email_df['Subject'].apply(lambda x: x[4:] if x.startswith('Re: ') or x.startswith('RE: ') else x )
-email_first = email_df.drop_duplicates(subset = ['Subject'], keep='first' )
-#cleaning classification
+# adding classification to email data frame
+email_df['Subject without re'] = email_df['Subject'].apply(lambda x: x[4:] if x.startswith('Re: ') or x.startswith('RE: ') else x ) # join classification on cleaned string
+# manually cleaning classification, error is caused by encoding/decoding error of "'"
 classification.replace('Hey, Iâ€™m going home sick.', 'Hey, I’m going home sick.', inplace=True)
 classification.replace('Iâ€™m in! -  post a list','I’m in! -  post a list', inplace=True )
 classification.replace('Whoâ€™s tracking the office pool', 'Who’s tracking the office pool', inplace=True)
 classification['Subject without re'] = classification['Subject']
 email_df = email_df.merge(classification[['Subject without re','class']], on='Subject without re', how = 'outer')
-# email_df['class'] = email_df.merge(classification, left_on='Subject without re', right_on='Subject')
 
+# network functions
 def edge_node(att, toatt, fromatt, day_search=None):
     #compute the edges
     edge_temp = []
@@ -262,13 +261,17 @@ df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
 df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
 
 ############################ Set variables ####################
-YEAR = 6
-analize_by = 'Department'
-color_dot = 'Department'
+YEAR = 6 # starting value day page 1
+analize_by = 'Department' # starting value color page 1 (2 graphs)
+color_dot = 'Department' # starting value color page 1 (dotplot)
+# color mapping of page 1 
 c_map_dep =  {'Administration':'#5b4dd6', 'Engineering':'#c933bc', 'Executive': '#ffc60a','Facilities': '#ff5960','Information Technology': '#ff9232','Security': '#ff2b90'}
 c_map_sent = {'pos': '#379475','neu': '#BDC4C5', 'neg': '#B51E17'}
-c_map_class = dict(zip(['Work', 'Change/schedule', 'Social', 'Weird', 'Other', 'Undefined', 'Spam'], px.colors.sequential.Viridis_r[:7]))
-
+c_map_class = dict(zip(['Work', 'Change/schedule', 'Social', 'Weird', 'Other', 'Undefined','Spam'], ['#fb6161','#ff8e02','#ffda00' , '#33d592', '#5bccff', '#5475ff', '#c435ff' ]))
+# setting order of legend for multiple columns
+category_order = {'class': ['Work', 'Change/schedule', 'Social', 'Weird', 'Other', 'Undefined', 'Spam'],
+                       'DepFrom' : ['Administration', 'Engineering', 'Executive', 'Facilities','Information Technology', 'Security'],
+                       'sentiment' : ['pos', 'neu', 'neg'] }
 ################################# Graph functions page 1 ###########################
 def chord_graph(YEAR, analize_by):
     if analize_by == 'Department':
@@ -313,43 +316,69 @@ def bar_deps(YEAR, analize_by):
     fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
     return fig
 
-def dotplotgraph( color_dot = 'Department', YEAR='6', dropdown = [], category = 'All'): ##cbd3dd
+def dotplotgraph(color_dot = 'Department', YEAR='6', dropdown = [], category = 'All'):
+    """
+    The function takes an array of input values from callbacks. Which influence the graph and ploting data of the graph. 
+    Commenting uses (variable)names as shown in the dashboard and from code/data.
+
+    Input: callback values
+        - color_dot         from 'Analyze by' button
+        - year              from chosen day time range
+        - dropdown             from 'Multi-Select Dropdown' containing strings of the selected values
+                            options: (show workhours, filter RE, corresponding day, show number of recipients, show categories)
+        - category          from 'Select category' dropdown
+    Some variables used in function:
+        color_dot           input from 'Analyze by' dropdown or 'Class', used in title of legend
+        color_dot_name      name of column in dataframe
+        c_dict              c_map corresponding to color_dot
+        category_order      global variable with order of column variables for legend
+
+    Returns: figure object
+    """
+    ### data ###
+    data = email_df 
+
+    ### multi select dropdown callbacks ###
+    # show number of recipients: input of size variable in px.scatter
     b_size = None
-    work_hour = 'No'
-    from_chord = 'No'
-    data = email_df
-    # RE = False
-
-    color_dot_name = {'Department': 'DepFrom', 'Sentiment': 'sentiment'}[color_dot]
-    c_dict = c_map_dep
-    if color_dot_name == 'sentiment':
-        c_dict = c_map_sent
-
     if 'show number of recipients' in dropdown:
         b_size = "nr_recipients"
+    # show workhours: show translucent bars during workhours 9-17
+    work_hour = 'No'
     if 'show workhours' in dropdown:
         work_hour = 'Yes'
+    # corresponding day: filter data so only email of one day are shown (same day selected in time range visualizer)
+    from_chord = 'No'
     if 'corresponding day' in dropdown:
-        from_chord = 'yes'
+        from_chord = 'yes' # set variable here, changes are made later
+        data = data[data['Day']==str(YEAR)]
+    # filter RE: only show first email sent in conversation. Replies of this email have the same sentiment and the content of the email are unknown.
     if 'filter RE' in dropdown:
         data = email_df.drop_duplicates(subset = ['Subject'], keep='first' )
-        # RE = True
+
+    # dropdown select category: select data of one category
     if category != 'All':
         data = data[data['class'] == category]
-        # keep colors
+    # 'analyze by' dropdown: color dot
+    color_dot_name = {'Department': 'DepFrom', 'Sentiment': 'sentiment'}[color_dot] # get column name used in data frame
+    # select color corresponding to color
+    c_dict = c_map_dep 
+    if color_dot_name == 'sentiment':
+        c_dict = c_map_sent
+    # show color of categories only if 'show categories' is chosen in 'multi-select dropdown' and all categories are selected in the 'select category'
+    # if one category is selected all would be the same color so then keep color by 'analyze by' 
     if 'show categories' in dropdown:
         if category == 'All':
-            color_dot_name='class'
+            color_dot_name = 'class'
             color_dot = 'Class'
             c_dict = c_map_class
-
-
-
-    if from_chord == 'No':
+        
+    ### start figure ###
+    if from_chord == 'No': # show all days
         fig=px.scatter(data, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
-                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict) #change hover column names color_discrete_map= cmap_custom
-        if work_hour == 'Yes':
-            fig.add_vrect(x0 = pd.to_datetime('2014-01-06 9:00'), x1 = pd.to_datetime('2014-01-06 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict, category_orders=category_order)
+        if work_hour == 'Yes': # show workdays for two weeks
+            fig.add_vrect(pd.to_datetime('2014-01-06 9:00'), pd.to_datetime('2014-01-06 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
             fig.add_vrect(pd.to_datetime('2014-01-07 9:00'), pd.to_datetime('2014-01-07 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
             fig.add_vrect(pd.to_datetime('2014-01-08 9:00'), pd.to_datetime('2014-01-08 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
             fig.add_vrect(pd.to_datetime('2014-01-09 9:00'), pd.to_datetime('2014-01-09 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
@@ -361,14 +390,14 @@ def dotplotgraph( color_dot = 'Department', YEAR='6', dropdown = [], category = 
             fig.add_vrect(pd.to_datetime('2014-01-16 9:00'), pd.to_datetime('2014-01-16 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
             fig.add_vrect(pd.to_datetime('2014-01-17 9:00'), pd.to_datetime('2014-01-17 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
 
-    else:
-        subset = data[data['Day']==str(YEAR)]
-        fig=px.scatter(subset, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
-                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict ) #change hover column names
-        if work_hour == 'Yes': # why does this not work??
+    else: # from_chord == true, show only one day
+        fig=px.scatter(data, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
+                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict,category_orders=category_order )
+        if work_hour == 'Yes': # show workhours for one day
             fig.add_vrect(pd.to_datetime('2014-01-'+str(YEAR)+' 9:00'), pd.to_datetime('2014-01-'+str(YEAR)+' 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
 
-    fig.update_xaxes(title_text = "Date", showgrid=False, color='white')
+    # layout of figure, axes names, background color, legend
+    fig.update_xaxes(title_text = "Date", showgrid=False, color='white') # shows only horizontal lines
     fig.update_yaxes(title_text = 'Person', color = 'white')
     fig.update_layout({'paper_bgcolor' : '#26232C', 'plot_bgcolor': '#26232C'}, legend_font_color='white', legend_title =color_dot)
     return fig
@@ -740,6 +769,7 @@ def render_page_content(pathname):
                 children=[dcc.Graph(id="my-graph2",
                                     figure=bar_deps(YEAR, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
                 ),
+            # div to house multi-select dropdown
             html.Div(
                 className="Rianne Row",
                 children=[
@@ -755,6 +785,7 @@ def render_page_content(pathname):
                         ],
                     ), ],style={'text-align': 'left','position':'relative', "left": -640, "top": "-400 px"}
                 ),
+            # div to house select category drowdown
             html.Div(
                 className="Rianne Row",
                 children=[
@@ -769,10 +800,11 @@ def render_page_content(pathname):
                                 ), 
                 ],style={'text-align': 'left','position':'relative', "left": -550, "top": "-400 px"}
             ),
-
+            # div to house dotplot graph
             html.Div(
                 className="eight columns",
                 children=[dcc.Graph(id="my-graph-dotplot",
+                                    # NOTE: 
                                     # commented configuration in the github. Gives a bit of overlap on my laptop (Rianne) #330
                                     # figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-350px"} 
                                     figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-300px"}
@@ -869,15 +901,17 @@ def render_page_content(pathname):
         ]
     )
 
-########## CALLBACKS ##########
+###################################### CALLBACKS #######################################33
+### callbacks page 1 ###
+# callback for chord diagram to update the global variable of YEAR and analize_by
 @app.callback(
     dash.dependencies.Output('my-graph', 'src'),
     [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value')])
 def update_output(value, value2):
-    # to update the global variable of YEAR and analize_by
     YEAR = value
     analize_by = value2
     return chord_graph(value, value2)
+# callback for bar chart to update the global variable of YEAR and analize_by
 @app.callback(
     dash.dependencies.Output('my-graph2', 'figure'),
     [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value')])
@@ -886,14 +920,15 @@ def update_output(value, value2):
     YEAR = value
     analize_by = value2
     return bar_deps(value, value2)
+# callbacks for dotplot to update figure by YEAR, analyze_by, multi-select dropdown and select category
 @app.callback(
     dash.dependencies.Output('my-graph-dotplot', 'figure'),
-    [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value') , #dash.dependencies.Input('color_dot', 'value')
+    [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value') ,
      dash.dependencies.Input('dropdown', 'value'),dash.dependencies.Input('category', 'value')])
-def update_output(chordplot, c_dot, dropdown, category):
-    return dotplotgraph( c_dot, YEAR = chordplot, dropdown = dropdown, category=category)
+def update_output(time, c_dot, dropdown, category):
+    return dotplotgraph( color_dot = c_dot, YEAR = time, dropdown = dropdown, category=category)
 
-# Ramon's callbacks
+### callbacks page 2 ###
 # callback for the (de)select all checklist
 @app.callback(
     Output("np-dropdown1", "value"),
