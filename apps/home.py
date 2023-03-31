@@ -10,7 +10,7 @@ import dash_bootstrap_components as dbc
 layout = html.Div([
     dbc.Container([
         dbc.Row([
-            dbc.Col(html.H1("Welcome to the GAStech Disappearance Visual Analytics tool of group 3", className="text-center")
+            dbc.Col(html.H1("Welcome to the GAStech Visual Analytics tool of group 3", className="text-center")
                     , className="mb-5 mt-5")
         ]),
         dbc.Row([
@@ -20,7 +20,7 @@ layout = html.Div([
             ]),
 
         dbc.Row([
-            dbc.Col(html.H5(children='The tool consists of 2 main pages: Home tab, which is an introduction page to the visual analytics tool. Exploration tab about the email correspondence between employees, which gives the oppurtunity to find interesting patterns.')
+            dbc.Col(html.H5(children='The tool consists of three main pages: Home tab, which is an introduction page to the visual analytics tool. Exploration tab about the email correspondence between employees, which gives the oppurtunity to find interesting patterns as well as a third page which allows the user to get a deeper insight into the general public opinion of GASTech by a detailed analysis on many news articles.')
                     , className="mb-5")
         ]),
 
@@ -39,7 +39,7 @@ layout = html.Div([
             dbc.Col(dbc.Card(children=[html.H3(children='You can find the code for this project in',
                                                className="text-center"),
                                        dbc.Button("GitHub",
-                                                  href="https://github.com/ddonov1905/visualisation_app/",
+                                                  href="https://github.com/YanasGH/VA/",
                                                   color="primary",
                                                   target="_blank",
                                                   className="mt-3"),

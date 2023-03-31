@@ -819,7 +819,7 @@ def render_page_content(pathname):
         )
     ])
 ######################## page 2 ############################
-    elif pathname == "/page-2": #THIS IS AN EXAMPLE FOR NOW
+    elif pathname == "/page-2": 
         return html.Div(className='row0-ramon', children=[        
             html.Div(children=[html.H1('NewsPaper Analysis')]),
             
@@ -998,11 +998,11 @@ def update_output(value1, value2):
     dash.dependencies.Input('np-dropdown2', 'value'))
 def update_output(value1):
     """
-    Updates the output based on a callback. Returns the bar chart based on the callbacks.
+    Updates the output based on a callback. Returns the line graph based on the callbacks.
     - value1: 
     """
     return plot_sentiment_newspaper(value1)
 
 
 if __name__=='__main__':
-    app.run_server(debug=True, port=3000)
+    app.run_server(debug=False, port=3000)
