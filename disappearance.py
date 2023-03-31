@@ -30,10 +30,6 @@ from wordcloud import WordCloud, STOPWORDS #wordcloud-1.8.2.2
 import warnings
 warnings.filterwarnings("ignore")
 
-########## BEGIN: LEFT HERE AS AN EXAMPLE --> DELETE LATER ##########
-df = pd.read_csv('https://raw.githubusercontent.com/Coding-with-Adam/Dash-by-Plotly/master/Bootstrap/Side-Bar/iranian_students.csv')
-############################## END ##############################
-
 ############################## Colors ##############################
 # Main background                   #26232C
 # Secondary background / sidebar    #cbd3dd
@@ -182,6 +178,22 @@ email_df = email_df.merge(classification[['Subject without re','class']], on='Su
 
 # network functions
 def edge_node(att, toatt, fromatt, day_search=None):
+    """
+    Computes the edges (from-to email correspondences) and nodes (employees) that are used to create the chord diagram.
+    
+    - att: either "EmailAddress" if you wish to get the from-to email correspondences between individual employees or 
+         "CurrentEmploymentType" if you wish to get the from-to email correspondences between departments 
+    - toatt: name of the column that contains the recipients, either "To" if att is "EmailAddress" or "DepTo" if att is
+           "CurrentEmploymentType"
+    - fromatt: name of the column that contains the sender, either "From" if att is "EmailAddress" or "DepFrom" if att is
+             "CurrentEmploymentType"
+    - day_search: the day for which the edges and nodes are to be computed, if None the edges and nodes are computed over all days
+    
+    Returns an adjacency matrix with senders as rows, recipients as column and number of emails sent as values, 
+    a dataframe edge_temp containing the number of times email was exchanged, the source (From/DepFrom) and the target
+    (To/DepTo), a dataframe node_temp containing the employee email and employee name
+    """ 
+    
     #compute the edges
     edge_temp = []
     if day_search==None:
@@ -235,33 +247,8 @@ def edge_node(att, toatt, fromatt, day_search=None):
 
 _, edge2, node2 = edge_node('EmailAddress', 'To', 'From')
 
-name_email_dict = dict(zip(node2['Account'].to_list(), node2['CustomerName'].to_list()))
-emp_dep_dict = dict(zip(employee_recs['EmailAddress'].to_list(), employee_recs['CurrentEmploymentType'].to_list()))
-df_chord_nodes = employee_recs[['EmailAddress']]
-df_chord_nodes['Department'] = None
-df_chord_nodes['Name'] = None
-for i in range(len(df_chord_nodes)): 
-    df_chord_nodes['Department'][i] = emp_dep_dict.get(df_chord_nodes['EmailAddress'][i])
-    df_chord_nodes['Name'][i] = name_email_dict.get(df_chord_nodes['EmailAddress'][i])   
-
-_, df_chord_edges, _ = edge_node('EmailAddress', 'To', 'From')
-df_chord_edges = df_chord_edges.rename(columns={"TransactionAmt": "value"})
-df_chord_edges['source'] = None
-df_chord_edges['target'] = None
-df_chord_edges['Gsource'] = None
-df_chord_edges['Gtarget'] = None
-for i in range(len(df_chord_edges)):
-    df_chord_edges['source'][i] = int(df_chord_nodes[df_chord_nodes['EmailAddress']==df_chord_edges['Source'][i]].index[0])
-    df_chord_edges['target'][i] = int(df_chord_nodes[df_chord_nodes['EmailAddress']==df_chord_edges['Target'][i]].index[0])
-    df_chord_edges['Gsource'][i] = emp_dep_dict.get(df_chord_edges['Source'][i])
-    df_chord_edges['Gtarget'][i] = emp_dep_dict.get(df_chord_edges['Target'][i])
-
-df_chord_nodes = df_chord_nodes.drop(columns=['EmailAddress'])
-df_chord_edges = df_chord_edges.drop(columns = ['Source', 'Target'])
-df_chord_edges = df_chord_edges[['source', 'target', 'value', 'Gsource','Gtarget', 'Date']]
-
 ############################ Set variables ####################
-YEAR = 6 # starting value day page 1
+DAY = 6 # starting value day page 1
 analize_by = 'Department' # starting value color page 1 (2 graphs)
 color_dot = 'Department' # starting value color page 1 (dotplot)
 # color mapping of page 1 
@@ -273,15 +260,28 @@ category_order = {'class': ['Work', 'Change/schedule', 'Social', 'Weird', 'Other
                        'DepFrom' : ['Administration', 'Engineering', 'Executive', 'Facilities','Information Technology', 'Security'],
                        'sentiment' : ['pos', 'neu', 'neg'] }
 ################################# Graph functions page 1 ###########################
-def chord_graph(YEAR, analize_by):
+def chord_graph(DAY, analize_by):
+    """
+    Loads the already created chord diagrams.
+    
+    - DAY: the selected day the user is interested in
+    - analyze_by: either "Department" or "Sentiment", depending on what type of analysis the user wants to perform
+    """
     if analize_by == 'Department':
-        return f'assets/graph_chord_{YEAR}.html'
+        return f'assets/graph_chord_{DAY}.html'
     else:
-        return f'assets/graph_chord_sentiment_{YEAR}.html'
+        return f'assets/graph_chord_sentiment_{DAY}.html'
 
-def bar_deps(YEAR, analize_by):
+def bar_deps(DAY, analize_by):
+    """
+    Creates and returned a stacked bar chart displaying the number of sent email per department.
+    
+    - DAY: the selected day the user is interested in
+    - analyze_by: either "Department" or "Sentiment", depending on what type of analysis the user wants to perform
+    """
+    
     if analize_by == 'Department':
-        adj_matrix, _, _ = edge_node('CurrentEmploymentType', 'DepTo', 'DepFrom', YEAR)
+        adj_matrix, _, _ = edge_node('CurrentEmploymentType', 'DepTo', 'DepFrom', DAY)
         adj_matrix = adj_matrix.rename(columns={"Information Technology": "IT"})
         adj_matrix = adj_matrix.reset_index()
         adj_matrix['CurrentEmploymentType'][1] = "IT"
@@ -297,7 +297,7 @@ def bar_deps(YEAR, analize_by):
         dfbs['Department'] = 3*['Administration']+3*['IT']+3*['Executive']+3*['Facilities']+3*['Engineering']+3*['Security']
         dfbs['Sentiment'] = 6*['neg', 'neu', 'pos']
         
-        dfday = email_df[email_df['Day']==str(YEAR)]
+        dfday = email_df[email_df['Day']==str(DAY)]
         sents = []
         
         for d in dfbs['Department'].unique():
@@ -316,14 +316,14 @@ def bar_deps(YEAR, analize_by):
     fig.update_layout(paper_bgcolor='#26232C',plot_bgcolor='#26232C', font_color = "#FEFEFE",font_size=13, yaxis=dict(gridcolor='#5c5f63'), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),font=dict(size=10))
     return fig
 
-def dotplotgraph(color_dot = 'Department', YEAR='6', dropdown = [], category = 'All'):
+def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'All'):
     """
     The function takes an array of input values from callbacks. Which influence the graph and ploting data of the graph. 
     Commenting uses (variable)names as shown in the dashboard and from code/data.
 
     Input: callback values
         - color_dot         from 'Analyze by' button
-        - year              from chosen day time range
+        - DAY              from chosen day time range
         - dropdown             from 'Multi-Select Dropdown' containing strings of the selected values
                             options: (show workhours, filter RE, corresponding day, show number of recipients, show categories)
         - category          from 'Select category' dropdown
@@ -351,7 +351,7 @@ def dotplotgraph(color_dot = 'Department', YEAR='6', dropdown = [], category = '
     from_chord = 'No'
     if 'corresponding day' in dropdown:
         from_chord = 'yes' # set variable here, changes are made later
-        data = data[data['Day']==str(YEAR)]
+        data = data[data['Day']==str(DAY)]
     # filter RE: only show first email sent in conversation. Replies of this email have the same sentiment and the content of the email are unknown.
     if 'filter RE' in dropdown:
         data = email_df.drop_duplicates(subset = ['Subject'], keep='first' )
@@ -394,7 +394,7 @@ def dotplotgraph(color_dot = 'Department', YEAR='6', dropdown = [], category = '
         fig=px.scatter(data, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
                                                         hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict,category_orders=category_order )
         if work_hour == 'Yes': # show workhours for one day
-            fig.add_vrect(pd.to_datetime('2014-01-'+str(YEAR)+' 9:00'), pd.to_datetime('2014-01-'+str(YEAR)+' 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
+            fig.add_vrect(pd.to_datetime('2014-01-'+str(DAY)+' 9:00'), pd.to_datetime('2014-01-'+str(DAY)+' 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
 
     # layout of figure, axes names, background color, legend
     fig.update_xaxes(title_text = "Date", showgrid=False, color='white') # shows only horizontal lines
@@ -403,7 +403,7 @@ def dotplotgraph(color_dot = 'Department', YEAR='6', dropdown = [], category = '
     return fig
 
 #**************************************
-# Ramon's preprocessing of the data and functions:
+# Preprocessing of the data and functions for page 2:
 #**************************************
 def get_news_papers():
     """ 
@@ -706,6 +706,11 @@ def plot_sentiment_newspaper(newspaper : str):
     [Input("url", "pathname")]
 )
 def render_page_content(pathname):
+    """
+    Renders the page content given a path.
+    - pathname: the path name of the page (selected from the sidebar); either "/" (home), "/page-1" (page 1) or "/page-2" (page 2)
+    """
+    
     # show home page as a starting page
     if pathname == "/": 
         return home.layout
@@ -750,7 +755,7 @@ def render_page_content(pathname):
                             """), style = {'font-size': 16, "color": '#FEFEFE'}
                                       ),
                             html.Div(className="six columns",
-                                     children=[dcc.Dropdown(id="input1", options=['Department', 'Sentiment'],placeholder="Analyze by", value='Department'), html.Div(id='output-container-dropdown')
+                                     children=[dcc.Dropdown(id="input1", options=['Department', 'Sentiment'],placeholder="Analyze by", value='Department', clearable=False), html.Div(id='output-container-dropdown')
                                               ],
                                     ), 
                          ],style={'font-size': 13, 'position':'relative', "margin": "auto", "top": "-270px", 'left':0, 'width': "150px"}),
@@ -759,7 +764,7 @@ def render_page_content(pathname):
             html.Div(
                 children=[
                     html.Iframe(id="my-graph",
-                        src=chord_graph(YEAR, analize_by),
+                        src=chord_graph(DAY, analize_by),
                         style={'text-align': 'left','position':'relative', 'left':20, "height": "640px", "width": "640px", 'border':"0"},
                     )
                 ]
@@ -767,7 +772,7 @@ def render_page_content(pathname):
             html.Div(
                 className="eight columns",
                 children=[dcc.Graph(id="my-graph2",
-                                    figure=bar_deps(YEAR, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
+                                    figure=bar_deps(DAY, analize_by))], style ={'text-align': 'left','position':'relative', "height": "400px", "width": "650px", "top": "-480px"}
                 ),
             # div to house multi-select dropdown
             html.Div(
@@ -806,8 +811,8 @@ def render_page_content(pathname):
                 children=[dcc.Graph(id="my-graph-dotplot",
                                     # NOTE: 
                                     # commented configuration in the github. Gives a bit of overlap on my laptop (Rianne) #330
-                                    # figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-350px"} 
-                                    figure = dotplotgraph(color_dot, YEAR = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-300px"}
+                                    # figure = dotplotgraph(color_dot, DAY = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-350px"} 
+                                    figure = dotplotgraph(color_dot, DAY = 6))], style ={'text-align': 'center','position': 'relative', 'width':1500, "top": "-300px"}
                 ),
 
             ]
@@ -903,30 +908,47 @@ def render_page_content(pathname):
 
 ###################################### CALLBACKS #######################################33
 ### callbacks page 1 ###
-# callback for chord diagram to update the global variable of YEAR and analize_by
+# callback for chord diagram to update the global variable of DAY and analize_by
 @app.callback(
     dash.dependencies.Output('my-graph', 'src'),
     [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value')])
 def update_output(value, value2):
-    YEAR = value
+    """
+    Updates the output based on a callback. Returns the chord diagram based on the callbacks.
+    - value: the callback from the time range (it is a day)
+    - value2: the callback from the top most dropdown menu (either "Department" or "Sentiment")
+    """
+    DAY = value
     analize_by = value2
     return chord_graph(value, value2)
-# callback for bar chart to update the global variable of YEAR and analize_by
+# callback for bar chart to update the global variable of DAY and analize_by
 @app.callback(
     dash.dependencies.Output('my-graph2', 'figure'),
     [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value')])
 def update_output(value, value2):
-    # to update the global variable of YEAR
-    YEAR = value
+    """
+    Updates the output based on a callback. Returns the stacked bar chart based on the callbacks.
+    - value: the callback from the time range (it is a day)
+    - value2: the callback from the top most dropdown menu (either "Department" or "Sentiment")
+    """
+    # to update the global variable of DAY
+    DAY = value
     analize_by = value2
     return bar_deps(value, value2)
-# callbacks for dotplot to update figure by YEAR, analyze_by, multi-select dropdown and select category
+# callbacks for dotplot to update figure by DAY, analyze_by, multi-select dropdown and select category
 @app.callback(
     dash.dependencies.Output('my-graph-dotplot', 'figure'),
     [dash.dependencies.Input('my-range-slider', 'value'), dash.dependencies.Input('input1', 'value') ,
      dash.dependencies.Input('dropdown', 'value'),dash.dependencies.Input('category', 'value')])
 def update_output(time, c_dot, dropdown, category):
-    return dotplotgraph( color_dot = c_dot, YEAR = time, dropdown = dropdown, category=category)
+    """
+    Updates the output based on a callback. Returns the dot plot graph based on the callbacks.
+    - time: the callback from the time range (it is a day)
+    - c_dot: the callback from the top most dropdown menu (either "Department" or "Sentiment")
+    - dropdown: 
+    - category: 
+    """
+    return dotplotgraph( color_dot = c_dot, DAY = time, dropdown = dropdown, category=category)
 
 ### callbacks page 2 ###
 # callback for the (de)select all checklist
@@ -935,6 +957,10 @@ def update_output(time, c_dot, dropdown, category):
     [Input("all-or-none", "value")]
 )
 def select_all_none(all_selected):
+    """
+    Updates the output based on a callback. Returns the bar chart based on the callbacks.
+    - all_selected: 
+    """
     all_or_none = []
     all_or_none = [paper for paper in news_papers_names if all_selected]
     return all_or_none
@@ -945,6 +971,11 @@ def select_all_none(all_selected):
     dash.dependencies.Input('multi-words', 'value'),
     dash.dependencies.Input('np-dropdown1', 'value'))
 def update_output(value1, value2):
+    """
+    Updates the output based on a callback. Returns the bar chart based on the callbacks.
+    - value: 
+    - value2: 
+    """
     words = value1.split(' ')
     return plot_freq_words(words, value2)
 
@@ -954,6 +985,11 @@ def update_output(value1, value2):
     dash.dependencies.Input('np-dropdown2', 'value'),
     dash.dependencies.Input('input-number', 'value'))
 def update_output(value1, value2):
+    """
+    Updates the output based on a callback. Returns the bar chart based on the callbacks.
+    - value: 
+    - value2: 
+    """
     return plot_most_common_words(value1, value2)
 
 # callback for the sentiment graph, using the selected newspaper
@@ -961,6 +997,10 @@ def update_output(value1, value2):
     dash.dependencies.Output('sentiment', 'figure'),
     dash.dependencies.Input('np-dropdown2', 'value'))
 def update_output(value1):
+    """
+    Updates the output based on a callback. Returns the bar chart based on the callbacks.
+    - value1: 
+    """
     return plot_sentiment_newspaper(value1)
 
 
