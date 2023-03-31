@@ -16,6 +16,7 @@ warnings.filterwarnings("ignore")
 
 print('----- Creating and saving 10 graphs -----')
 
+########## IMPORT DATA AND PERFORM SENTIMENT ANALYSIS ##########
 sia = SentimentIntensityAnalyzer()
 
 email_df = pd.read_csv('email_headers.csv', encoding='cp1252')
@@ -45,6 +46,19 @@ for i in range(len(email_df)):
     email_df['DepTo'][i]=to_list
 
 def edge_node(att, toatt, fromatt):
+    """
+    Computes the edges (from-to email correspondences) and nodes (employees) that are used to create the chord diagram.
+    att: either "EmailAddress" if you wish to get the from-to email correspondences between individual employees or 
+         "CurrentEmploymentType" if you wish to get the from-to email correspondences between departments 
+    toatt: name of the column that contains the recipients, either "To" if att is "EmailAddress" or "DepTo" if att is
+           "CurrentEmploymentType"
+    fromatt: name of the column that contains the sender, either "From" if att is "EmailAddress" or "DepFrom" if att is
+             "CurrentEmploymentType"
+    Returns an adjacency matrix with senders as rows, recipients as column and number of emails sent as values, 
+    a dataframe edge_temp containing the number of times email was exchanged, the source (From/DepFrom) and the target
+    (To/DepTo), a dataframe node_temp containing the employee email and employee name
+    """ 
+    
     #compute the edges
     edge_temp = []
     for day in email_df['Day'].unique():
@@ -93,6 +107,7 @@ def edge_node(att, toatt, fromatt):
 
 _, edge2, node2 = edge_node('EmailAddress', 'To', 'From')
 
+########## put the data in the correct "format" so that it can be used for the chord graph ###########
 name_email_dict = dict(zip(node2['Account'].to_list(), node2['CustomerName'].to_list()))
 emp_dep_dict = dict(zip(employee_recs['EmailAddress'].to_list(), employee_recs['CurrentEmploymentType'].to_list()))
 
@@ -109,11 +124,15 @@ chord_sentiment_pre = chord_sentiment_pre[chord_sentiment_pre['source']!=chord_s
 chord_sentiment_pre['value'] = np.zeros(len(chord_sentiment_pre))
 chord_sentiment_pre['dep'] = None
 
-def sentiment_chord_graph(YEAR, chord_sentiment_pre):
-    
+def sentiment_chord_graph(DAY, chord_sentiment_pre):
+    """
+    Creates a chord diagram of the email correspondences, such that each employee node is colored wrt the sentiment of the email tehy sent.
+    DAY: the day for which the chord diagram will be created.
+    Returns the created chord diagram.
+    """    
     chord_sentiment = copy.deepcopy(chord_sentiment_pre)
     for i in range(len(chord_sentiment)):
-        email_df_days = email_df[email_df['Day']==str(YEAR)]
+        email_df_days = email_df[email_df['Day']==str(DAY)]
         email_df_filtered = email_df_days[email_df_days['From']==chord_sentiment['source'][i]]
 
         for index in email_df_filtered.index:
@@ -161,10 +180,11 @@ def sentiment_chord_graph(YEAR, chord_sentiment_pre):
     return chord
 
 c = 1
-for YEAR in [6,7,8,9,10,13,14,15,16,17]:
-    chord_s = sentiment_chord_graph(YEAR, chord_sentiment_pre)
+#create a chord diagram for each day in the dataset
+for DAY in [6,7,8,9,10,13,14,15,16,17]:
+    chord_s = sentiment_chord_graph(DAY, chord_sentiment_pre)
     renderer = hv.renderer('bokeh')
     renderer.theme = Theme('assets/theme_chord.json')
-    renderer.save(chord_s, f'assets/graph_chord_sentiment_{YEAR}')
+    renderer.save(chord_s, f'assets/graph_chord_sentiment_{DAY}')
     print(f'----- {10-c} graphs left -----')
     c+=1
