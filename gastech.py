@@ -17,7 +17,6 @@ import copy
 from collections import Counter
 import networkx as nx 
 import json
-from collections import Counter
 from colour import Color
 import plotly.graph_objects as go
 from plotly.express.colors import sample_colorscale
