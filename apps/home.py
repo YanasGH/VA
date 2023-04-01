@@ -31,9 +31,9 @@ layout = html.Div([
                                                   href="https://openscholarship.wustl.edu/cgi/viewcontent.cgi?filename=1&article=2189&context=cse_research&type=additional",
                                                   color="primary",
                                                   target="_blank",
-                                                  className="mt-3")
+                                                  className="mt-3", style={"border-radius": 5})
                                        ],
-                             body=True, color="dark", outline=True)
+                             body=True, color="dark", outline=True, style={"border-radius": 20})
                     , width=6, className="mb-4"),
 
             dbc.Col(dbc.Card(children=[html.H3(children='You can find the code for this project in',
@@ -42,9 +42,9 @@ layout = html.Div([
                                                   href="https://github.com/YanasGH/VA/",
                                                   color="primary",
                                                   target="_blank",
-                                                  className="mt-3"),
+                                                  className="mt-3", style={"border-radius": 5}),
                                        ],
-                             body=True, color="dark", outline=True)
+                             body=True, color="dark", outline=True, style={"border-radius": 20})
                     , width=6, className="mb-4")
         ], className="mb-5")
 
