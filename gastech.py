@@ -693,8 +693,8 @@ def plot_sentiment_newspaper(newspaper : str):
     d = {'Date': dates, 'Sentiment Score': sent_scores}
     df = pd.DataFrame(d).sort_values('Date').reset_index(drop='index')
     
-    fig = px.line(df, x='Date', y='Sentiment Score', title='Sentiment score over time for "' + newspaper + '"')
-    fig.update_traces(mode="markers+lines", line_color='#ffff33')
+    fig = px.scatter(df, x='Date', y='Sentiment Score', color='Sentiment Score', color_continuous_scale='rdylgn', range_color=[-1, 1], title='Sentiment score over time for "' + newspaper + '"')
+    fig.update_traces(mode="markers+lines", line_color='#CCCCCC', marker=dict(size=12,line=dict(width=1, color='#FEFEFE')))
     fig.update_layout(paper_bgcolor='#26232C', plot_bgcolor='#26232C', font_color = "#FEFEFE", xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#5c5f63', zerolinecolor='#5c5f63'), font=dict(size=10))
     return fig
 
@@ -842,7 +842,7 @@ def render_page_content(pathname):
                                                 html.Div(className='row3-ramon',
                                                             children=[
                                                                 dcc.Markdown("Type some words, seperated by spaces, to show their frequencies:", style = {'font-size': 16, "color": '#FEFEFE'}),
-                                                                dcc.Input(id='multi-words', value='kronos pok', type='text', placeholder='Type your words here', style={'width':'95%'})
+                                                                dcc.Input(id='multi-words', value='kronos pok government', type='text', placeholder='Type your words here', style={'width':'95%'})
                                                                 
                                                 ]),
                                                 html.Div(className='graph-ramon',
@@ -871,7 +871,7 @@ def render_page_content(pathname):
                         ]),
                         html.Div(style={'width':'40%'}, children=[
                             dcc.Markdown("Choose the newspaper for both graphs:", style = {'font-size': 16, "color": '#FEFEFE'}),
-                            dcc.Dropdown(options=news_papers_names, value='The Orb', id='np-dropdown2', placeholder='Select a newspaper')
+                            dcc.Dropdown(options=news_papers_names, value='Worldwise', id='np-dropdown2', placeholder='Select a newspaper')
                         ])  
                      ]),
 
@@ -882,7 +882,7 @@ def render_page_content(pathname):
                                  children=[        
                                     html.Div(className='graph-ramon',
                                              children=[
-                                                dcc.Graph(id="mc-words", figure=plot_most_common_words('The Orb', 20))
+                                                dcc.Graph(id="mc-words", figure=plot_most_common_words('Worldwise', 20))
                                              ]
                                     )
                         ]),
@@ -890,7 +890,7 @@ def render_page_content(pathname):
                                  children=[
                                     html.Div(className='graph-ramon',
                                              children=[
-                                                dcc.Graph(id="sentiment", figure=plot_sentiment_newspaper('The Orb'))
+                                                dcc.Graph(id="sentiment", figure=plot_sentiment_newspaper('Worldwise'))
                                              ]
                                     )
                         ])
