@@ -25,6 +25,8 @@ $ python gastech.py
 4. The application should now be running on your local system (after a couple of seconds).
 5. To view the dashboard, open your preferred web browser and enter in the address bar `http://127.0.0.1:3000/`.
 
+(In case the dashboard displays overlapping components try opening the dashboard in a smaller venster instead of full screen mode.)
+
 ## D. Additional files
 * the assets folder contains all a css file (used for styling the dashboard), 20 html files (10 html files containing a chord diagram per department and 10 html files containing a chord diagram per sentiment), 12 woff files and a "generator_config.txt"" file for the font, one json file used to style the chord diagrams and one png file containing the word cloud
 * "home.py" (in the "apps" folder) contains the home page of the dashboard

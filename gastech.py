@@ -162,9 +162,10 @@ for i in range(len(email_df)):
     email_df['DepTo'][i]=to_list
 
 # data preprocessing to dotplot
-email_df['DateTime'] = pd.to_datetime(email_df['Date'])
-email_df['clean_name_from'] = email_df.From.str[:-19].replace(".", " ")
-email_df['nr_recipients'] = [len(list) for list in email_df['To'].str.replace(',', '').str.split()]
+email_df['time'] = pd.to_datetime(email_df['Date'])
+email_df['from'] = email_df.From.str[:-19]#.replace(".", " ")
+email_df['from'] = email_df['from'].str.replace('.', ' ')
+email_df['number of recipients'] = [len(list) for list in email_df['To'].str.replace(',', '').str.split()]
 
 # adding classification to email data frame
 email_df['Subject without re'] = email_df['Subject'].apply(lambda x: x[4:] if x.startswith('Re: ') or x.startswith('RE: ') else x ) # join classification on cleaned string
@@ -341,7 +342,7 @@ def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'A
     # show number of recipients: input of size variable in px.scatter
     b_size = None
     if 'show number of recipients' in dropdown:
-        b_size = "nr_recipients"
+        b_size = "number of recipients"
     # show workhours: show translucent bars during workhours 9-17
     work_hour = 'No'
     if 'show workhours' in dropdown:
@@ -353,7 +354,8 @@ def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'A
         data = data[data['Day']==str(DAY)]
     # filter RE: only show first email sent in conversation. Replies of this email have the same sentiment and the content of the email are unknown.
     if 'filter RE' in dropdown:
-        data = email_df.drop_duplicates(subset = ['Subject'], keep='first' )
+        # data = data.drop_duplicates(subset = ['Subject'], keep='first' )
+        data = data[data['Subject']==data['Subject without re']]
 
     # dropdown select category: select data of one category
     if category != 'All':
@@ -374,8 +376,8 @@ def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'A
         
     ### start figure ###
     if from_chord == 'No': # show all days
-        fig=px.scatter(data, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
-                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict, category_orders=category_order)
+        fig=px.scatter(data, x='time', y='from',hover_name='Subject', size = b_size,
+                                                        hover_data=["number of recipients"], color = color_dot_name, color_discrete_map=c_dict, category_orders=category_order)
         if work_hour == 'Yes': # show workdays for two weeks
             fig.add_vrect(pd.to_datetime('2014-01-06 9:00'), pd.to_datetime('2014-01-06 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
             fig.add_vrect(pd.to_datetime('2014-01-07 9:00'), pd.to_datetime('2014-01-07 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
@@ -390,8 +392,8 @@ def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'A
             fig.add_vrect(pd.to_datetime('2014-01-17 9:00'), pd.to_datetime('2014-01-17 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
 
     else: # from_chord == true, show only one day
-        fig=px.scatter(data, x='DateTime', y='clean_name_from',hover_name='Subject', size = b_size,
-                                                        hover_data=["nr_recipients"], color = color_dot_name, color_discrete_map=c_dict,category_orders=category_order )
+        fig=px.scatter(data, x='time', y='from',hover_name='Subject', size = b_size,
+                                                        hover_data=["number of recipients"], color = color_dot_name, color_discrete_map=c_dict,category_orders=category_order )
         if work_hour == 'Yes': # show workhours for one day
             fig.add_vrect(pd.to_datetime('2014-01-'+str(DAY)+' 9:00'), pd.to_datetime('2014-01-'+str(DAY)+' 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
 
@@ -931,8 +933,8 @@ def update_output(value, value2):
     - value2: the callback from the top most dropdown menu (either "Department" or "Sentiment")
     """
     # to update the global variable of DAY
-    DAY = value
-    analize_by = value2
+    # DAY = value
+    # analize_by = value2
     return bar_deps(value, value2)
 # callbacks for dotplot to update figure by DAY, analyze_by, multi-select dropdown and select category
 @app.callback(
@@ -944,8 +946,8 @@ def update_output(time, c_dot, dropdown, category):
     Updates the output based on a callback. Returns the dot plot graph based on the callbacks.
     - time: the callback from the time range (it is a day)
     - c_dot: the callback from the top most dropdown menu (either "Department" or "Sentiment")
-    - dropdown: 
-    - category: 
+    - dropdown: the callback from the multi-select dropdown (one string with the selected options (combination of: "show workhours", "filter RE", "show number of recipients", "corresponding day", "show categories"))
+    - category: the callback from left bottom dropdown select category (either "All", "Work", "Change/schedule", "Social", "Weird", "Other", "Undefined","Spam"])
     """
     return dotplotgraph( color_dot = c_dot, DAY = time, dropdown = dropdown, category=category)
 
