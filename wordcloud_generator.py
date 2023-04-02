@@ -64,5 +64,5 @@ def make_wordcloud(max_words : int = 250, min_font_size : int = 5, bg_color : st
     plt.imshow(wordcloud)
     plt.axis("off")
     plt.tight_layout(pad = 0)
-    plt.savefig('wordcloud.png')
+    plt.savefig('assets/wordcloud.png')
 make_wordcloud(250, 5, '#26232C', 'viridis', True)
