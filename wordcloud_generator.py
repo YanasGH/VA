@@ -26,7 +26,7 @@ def make_wordcloud(max_words : int = 250, min_font_size : int = 5, bg_color : st
         # for each file, compute the frequencies of the words
         # remove punctuation and stopwords
         # store everything in 1 counter
-        with open(path) as f:
+        with open(path, encoding="latin-1") as f:
             words = f.read().split()
             words_lower = [word.lower() for word in words]
             no_punc = [''.join(char for char in word if char not in removable_punctuation) for word in words_lower]
@@ -64,5 +64,5 @@ def make_wordcloud(max_words : int = 250, min_font_size : int = 5, bg_color : st
     plt.imshow(wordcloud)
     plt.axis("off")
     plt.tight_layout(pad = 0)
-    plt.savefig('assets/wordcloud.png')
+    plt.savefig('assets/wordcloud.png', dpi=300)
 make_wordcloud(250, 5, '#26232C', 'viridis', True)

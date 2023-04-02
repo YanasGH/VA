@@ -3,7 +3,7 @@ This repository contains the code for the interactive dashboard for GAStech of G
 
 ## A. Requirements
 
-* Python>=3.9
+* Python==3.9 or Python==3.10
 
 ## B. Dependencies
 
@@ -26,8 +26,8 @@ $ python gastech.py
 5. To view the dashboard, open your preferred web browser and enter in the address bar `http://127.0.0.1:3000/`.
 
 ## D. Additional files
-* the assets folder contains all a css file (used for styling the dashboard), 20 html files (10 html files containing a chord diagram per department and 10 html files containing a chord diagram per sentiment), 12 woff files and a generator_config.txt file for the font, one json file used to style the chord diagrams and one png file containing the word cloud
-* "home.py" (in the "apps" folder) contains the home page of the dashboard 
+* the assets folder contains all a css file (used for styling the dashboard), 20 html files (10 html files containing a chord diagram per department and 10 html files containing a chord diagram per sentiment), 12 woff files and a "generator_config.txt"" file for the font, one json file used to style the chord diagrams and one png file containing the word cloud
+* "home.py" (in the "apps" folder) contains the home page of the dashboard
 * data/articles folder that contains the txt files with news articles
 * "EmployeeRecords.xlsx" contains the employee records
 * "email_headers.csv" contains the email correspondences between employees over two working weeks
