@@ -94,7 +94,7 @@
 }
 
 .row1-2-ramon{
-  width: 100%;
+  width: 128%;
   height: 5%;
   display: flex;
 }
@@ -126,9 +126,10 @@
 }
 
 .row3-ramon{
-  width: 100%;
+  position: relative;
+  width: 90%;
   height: 10%;
-  display: inline;
+  left: 40px;
 }
 
 .graph-ramon{

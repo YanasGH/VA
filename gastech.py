@@ -844,7 +844,7 @@ def render_page_content(pathname):
                                                 html.Div(className='row3-ramon',
                                                             children=[
                                                                 dcc.Markdown("Type some words, seperated by spaces, to show their frequencies:", style = {'font-size': 16, "color": '#FEFEFE'}),
-                                                                dcc.Input(id='multi-words', value='kronos pok government', type='text', placeholder='Type your words here', style={'width':'95%'})
+                                                                dcc.Input(id='multi-words', value='kronos pok government', type='text', placeholder='Type your words here', style={'width':'95%', "border-radius": 3})
                                                                 
                                                 ]),
                                                 html.Div(className='graph-ramon',
@@ -869,9 +869,9 @@ def render_page_content(pathname):
                      children=[
                         html.Div(style={'width':'40%'}, children=[
                             dcc.Markdown("Choose the number of words for the left graph (5-50):", style = {'font-size': 16, "color": '#FEFEFE'}),
-                            dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=5, max=50, step=1, style = {'width': '25%'})
+                            dcc.Input(id='input-number', value=20, type='number', placeholder='Type your number here', min=5, max=50, step=1, style = {'width': '25%', "border-radius": 3})
                         ]),
-                        html.Div(style={'width':'40%'}, children=[
+                        html.Div(style={'width':'32%'}, children=[
                             dcc.Markdown("Choose the newspaper for both graphs:", style = {'font-size': 16, "color": '#FEFEFE'}),
                             dcc.Dropdown(options=news_papers_names, value='Worldwise', id='np-dropdown2', placeholder='Select a newspaper')
                         ])  
