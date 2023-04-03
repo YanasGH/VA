@@ -550,7 +550,7 @@ def plot_freq_words(words: list, news_papers_list : list = []):
         df.rename(columns={'level_0': 'Newspaper', 'level_1': 'Word', 0: 'Frequency'}, inplace=True)
         
         title = 'Frequency of given words per newspaper'
-        fig = px.bar(df, x='Newspaper', y='Frequency', color='Word', barmode='group', text='Word', color_discrete_sequence= discrete_colors, title=title)
+        fig = px.bar(df, x='Newspaper', y='Frequency', color='Word', category_orders={'Newspaper': sorted(news_papers_list), 'Word':sorted(words)}, barmode='group', text='Word', color_discrete_sequence= discrete_colors, title=title)
         fig.update_layout(paper_bgcolor='#26232C', plot_bgcolor='#26232C', font_color = "#FEFEFE", font_size=13, yaxis=dict(gridcolor='#5c5f63'), font=dict(size=10))
         return fig
     
