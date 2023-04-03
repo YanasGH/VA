@@ -857,7 +857,7 @@ def render_page_content(pathname):
                                              children=[
                                                 dcc.Markdown("Select the newspaper(s)", style = {'font-size': 16, "color": '#FEFEFE', 'text-align':'center'}),
                                                 dcc.Checklist(id="all-or-none", options=[{"label": "(De)Select All", "value": "All"}], value=[], style={'font-size': 12, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'}),
-                                                dcc.Checklist(options=news_papers_names, value=news_papers_names, id='np-dropdown1', style={'font-size': 12, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'})
+                                                dcc.Checklist(options=sorted(news_papers_names), value=news_papers_names, id='np-dropdown1', style={'font-size': 12, 'text-align':'center', "color": '#FEFEFE'}, inputStyle={"margin-right": "3px", 'margin-left': '3px'})
                                              ])
                                     
                         ])
@@ -873,7 +873,7 @@ def render_page_content(pathname):
                         ]),
                         html.Div(style={'width':'32%'}, children=[
                             dcc.Markdown("Choose the newspaper for both graphs:", style = {'font-size': 16, "color": '#FEFEFE'}),
-                            dcc.Dropdown(options=news_papers_names, value='Worldwise', id='np-dropdown2', placeholder='Select a newspaper')
+                            dcc.Dropdown(options=sorted(news_papers_names), value='Worldwise', id='np-dropdown2', placeholder='Select a newspaper')
                         ])  
                      ]),
 
