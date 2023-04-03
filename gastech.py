@@ -432,7 +432,7 @@ def get_news_papers():
 
 # get all the newspapers, their corresponding files and names and store them
 news_papers = get_news_papers()
-news_papers_names = list(news_papers.keys())
+news_papers_names = sorted(list(news_papers.keys()))
 
 # set some punctuation and stopwords to remove from the words within the articles
 removable_punctuation = '",:;?!()-.'
