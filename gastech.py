@@ -377,7 +377,7 @@ def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'A
     ### start figure ###
     if from_chord == 'No': # show all days
         fig=px.scatter(data, x='time', y='from',hover_name='Subject', size = b_size,
-                                                        hover_data=["number of recipients"], color = color_dot_name, color_discrete_map=c_dict, category_orders=category_order)
+                                                        hover_data=["number of recipients", "DepFrom", "sentiment", "class"], color = color_dot_name, color_discrete_map=c_dict, category_orders=category_order)
         if work_hour == 'Yes': # show workdays for two weeks
             fig.add_vrect(pd.to_datetime('2014-01-06 9:00'), pd.to_datetime('2014-01-06 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
             fig.add_vrect(pd.to_datetime('2014-01-07 9:00'), pd.to_datetime('2014-01-07 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
@@ -393,13 +393,13 @@ def dotplotgraph(color_dot = 'Department', DAY='6', dropdown = [], category = 'A
 
     else: # from_chord == true, show only one day
         fig=px.scatter(data, x='time', y='from',hover_name='Subject', size = b_size,
-                                                        hover_data=["number of recipients"], color = color_dot_name, color_discrete_map=c_dict,category_orders=category_order )
+                                                        hover_data=["number of recipients","DepFrom", "sentiment", "class"], color = color_dot_name, color_discrete_map=c_dict,category_orders=category_order )
         if work_hour == 'Yes': # show workhours for one day
             fig.add_vrect(pd.to_datetime('2014-01-'+str(DAY)+' 9:00'), pd.to_datetime('2014-01-'+str(DAY)+' 17:00'), line_width=0, fillcolor='#cbd3dd', opacity=0.2)
 
-    # layout of figure, axes names, background color, legend
+    # layout of figure, axes names, background color, legend and sorting of names by department first and than names.
     fig.update_xaxes(title_text = "Date", showgrid=False, color='white') # shows only horizontal lines
-    fig.update_yaxes(title_text = 'Person', color = 'white')
+    fig.update_yaxes(title_text = 'Person', color = 'white', categoryorder = 'array', categoryarray= data.sort_values(['DepFrom','from'], ascending=False)['from'])
     fig.update_layout({'paper_bgcolor' : '#26232C', 'plot_bgcolor': '#26232C'}, legend_font_color='white', legend_title =color_dot)
     return fig
 
